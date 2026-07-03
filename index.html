@@ -478,6 +478,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
       <button class="btn" onclick="saveFirebaseConfig()" style="flex:1">💾 Save &amp; Enable Sync</button>
       <button class="btn sec" onclick="fbSync.signOut()" style="flex:1">🚪 Sign out</button>
     </div>
+    <button class="btn sec" onclick="dedupeParts()" style="width:100%;margin-top:8px">🧹 Remove duplicate parts</button>
   </div>
   
   <div style="background:var(--sur2);padding:14px;border-radius:4px;margin-bottom:16px;border:1px solid var(--acc)">
@@ -1350,7 +1351,7 @@ function loadDB(){
       if(s.billSeq)DB.billSeq=s.billSeq;
     }
   }catch(e){console.warn('Load error:',e);}
-  if(!DB.parts||!DB.parts.length)DB.parts=PARTS_DATA;
+  if(!DB.parts||!DB.parts.length){DB.parts=PARTS_DATA;window._seededFresh=true;}
   if(!DB.suppliers||!DB.suppliers.length)DB.suppliers=SUPPLIERS_DATA;
   if(!DB.customers)DB.customers=[];
   if(!DB.sales)DB.sales=[];
@@ -5855,6 +5856,12 @@ var fbSync = {
       self.shadow[col]=self.shadow[col]||{};
       var firstSnap=true; // each collection counts once toward "first load complete"
       self.db.collection(col).onSnapshot(function(snap){
+        // 🛡️ Fresh-device guard: if this device started on built-in seed data
+        // and the cloud already has real records, take the cloud copy only -
+        // never merge/push the seed (prevents duplicated inventory).
+        if(firstSnap && window._seededFresh && (col==='parts'||col==='suppliers') && snap.size>0){
+          DB[col]=[];
+        }
         var changed=false;
         snap.docChanges().forEach(function(ch){
           if(ch.doc.metadata.hasPendingWrites) return; // our own local write echoing back
@@ -5986,6 +5993,44 @@ function saveFirebaseConfig(){
     toast('☁️ Firebase config saved! Reloading…','ok');
     setTimeout(function(){ location.reload(); },900);
   }catch(e){ toast('Could not read config: '+e.message,'err'); }
+}
+
+// 🧹 One-click cleanup: remove duplicate parts created by the seed-data sync bug.
+// Keeps the "real" copy of each duplicate (the one used in sales / with barcode
+// or description), removes the rest locally AND from the cloud (via sync).
+function dedupeParts(){
+  var salesPids={};
+  (DB.sales||[]).forEach(function(s){ (s.items||[]).forEach(function(it){ if(it.pid) salesPids[String(it.pid)]=1; }); });
+  var groups={};
+  (DB.parts||[]).forEach(function(p){
+    var key=String(p.sku||'').trim().toUpperCase()+'||'+String(p.name||'').trim().toUpperCase();
+    (groups[key]=groups[key]||[]).push(p);
+  });
+  var keep=[], removed=0;
+  Object.keys(groups).forEach(function(key){
+    var g=groups[key];
+    if(g.length===1){ keep.push(g[0]); return; }
+    // score each copy: prefer the one referenced by sales, then richer data
+    g.forEach(function(p){
+      p._score=(salesPids[String(p.id)]?100:0)+(p.desc?10:0)+(p.barcode?10:0)+(p.priceHistory?2:0);
+    });
+    g.sort(function(a,b){ return b._score-a._score; });
+    keep.push(g[0]);
+    removed+=g.length-1;
+  });
+  keep.forEach(function(p){ delete p._score; });
+  if(removed===0){ toast('✅ No duplicates found ('+keep.length+' parts)','ok'); return; }
+  showConfirm(
+    '🧹 Remove Duplicates',
+    'Found '+removed+' duplicate parts (keeping '+keep.length+'). The copies used in sales / with barcodes &amp; descriptions are kept. Remove the duplicates everywhere (this device + cloud + other devices)?',
+    function(){
+      DB.parts=keep;
+      saveDB(); // sync layer pushes the deletions to the cloud automatically
+      if(typeof logAudit==='function'){ try{ logAudit('cleanup','Removed '+removed+' duplicate parts'); }catch(e){} }
+      renderInv();
+      toast('🧹 Removed '+removed+' duplicates. '+keep.length+' parts remain. Cloud updating…','ok');
+    }
+  );
 }
 
 // boot cloud sync after the app is up
