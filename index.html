@@ -5755,8 +5755,18 @@ var fbSync = {
   COLS: ['parts','customers','suppliers','sales','purchaseOrders','invoices','pos'],
 
   getConfig: function(){
-    try{ var raw=localStorage.getItem('neme_fb_config'); return raw?JSON.parse(raw):null; }
-    catch(e){ return null; }
+    try{ var raw=localStorage.getItem('neme_fb_config'); if(raw) return JSON.parse(raw); }
+    catch(e){}
+    // Built-in default (NEME shop project) - so phones/PCs work without pasting config.
+    // A config saved in Settings above always overrides this.
+    return {
+      apiKey: "AIzaSyCrQ4hzFEdBlQmLEd6FqsOZ062JYid4YKk",
+      authDomain: "neme-pos.firebaseapp.com",
+      projectId: "neme-pos",
+      storageBucket: "neme-pos.firebasestorage.app",
+      messagingSenderId: "765233263159",
+      appId: "1:765233263159:web:335a5bbd5a1eaa31bec5b2"
+    };
   },
 
   setStatus: function(txt, color){
