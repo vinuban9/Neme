@@ -6001,9 +6001,18 @@ function saveFirebaseConfig(){
 function dedupeParts(){
   var salesPids={};
   (DB.sales||[]).forEach(function(s){ (s.items||[]).forEach(function(it){ if(it.pid) salesPids[String(it.pid)]=1; }); });
+  // Group by NORMALIZED part number: letters+digits only, uppercase.
+  // 'D-0037-01' and 'D003701' are the same part; MK origin suffixes (IN/JP)
+  // are alphanumeric so origin variants stay separate.
+  function normKey(p){
+    var n=String(p.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(n) return 'N:'+n;
+    var s=String(p.sku||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    return 'S:'+s;
+  }
   var groups={};
   (DB.parts||[]).forEach(function(p){
-    var key=String(p.sku||'').trim().toUpperCase()+'||'+String(p.name||'').trim().toUpperCase();
+    var key=normKey(p);
     (groups[key]=groups[key]||[]).push(p);
   });
   var keep=[], removed=0;
@@ -6012,7 +6021,7 @@ function dedupeParts(){
     if(g.length===1){ keep.push(g[0]); return; }
     // score each copy: prefer the one referenced by sales, then richer data
     g.forEach(function(p){
-      p._score=(salesPids[String(p.id)]?100:0)+(p.desc?10:0)+(p.barcode?10:0)+(p.priceHistory?2:0);
+      p._score=(salesPids[String(p.id)]?100:0)+(p.desc?10:0)+(p.barcode?10:0)+((p.location&&String(p.location).trim())?3:0)+(p.priceHistory?2:0);
     });
     g.sort(function(a,b){ return b._score-a._score; });
     keep.push(g[0]);
