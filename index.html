@@ -5750,10 +5750,29 @@ var fbSync = {
   db: null,
   auth: null,
   shadow: {},          // colName -> { docId: jsonString } of last-synced state
+  tomb: {},            // 🪦 deleted record ids -> timestamp (so deletions stick everywhere)
   pushTimer: null,
   pushing: false,
   pushAgain: false,
   COLS: ['parts','customers','suppliers','sales','purchaseOrders','invoices','pos'],
+
+  // Remove any local records that were deleted elsewhere; never let them re-sync.
+  applyTombstones: function(){
+    var self=this, changed=false;
+    this.COLS.forEach(function(col){
+      var arr=DB[col]||[];
+      var kept=arr.filter(function(r){ return !(r && self.tomb[String(r.id)]); });
+      if(kept.length!==arr.length){
+        DB[col]=kept; changed=true;
+        Object.keys(self.shadow[col]||{}).forEach(function(id){ if(self.tomb[id]) delete self.shadow[col][id]; });
+      }
+    });
+    if(changed){
+      try{localStorage.setItem('neme_v1',JSON.stringify({parts:DB.parts,customers:DB.customers,sales:DB.sales,pos:DB.pos,purchaseOrders:DB.purchaseOrders,invoices:DB.invoices,suppliers:DB.suppliers,billSeq:DB.billSeq||0,priceList:DB.priceList||[],settings:DB.settings||{},auditLog:DB.auditLog||[],invoiceHistory:DB.invoiceHistory||[],archivedProducts:DB.archivedProducts||[],customerStats:DB.customerStats||{},priceHistory:DB.priceHistory||[]}));}catch(e){}
+      try{refreshActivePanel();}catch(e){}
+    }
+    return changed;
+  },
 
   getConfig: function(){
     try{ var raw=localStorage.getItem('neme_fb_config'); if(raw) return JSON.parse(raw); }
@@ -5872,6 +5891,11 @@ var fbSync = {
             delete self.shadow[col][id];
             if(DB[col].length!==before) changed=true;
           } else {
+            if(self.tomb[id]){
+              // a stale device re-uploaded a deleted record - remove it from the cloud again
+              try{ ch.doc.ref.delete(); }catch(e){}
+              return;
+            }
             var rec=ch.doc.data();
             self.shadow[col][id]=JSON.stringify(rec);
             var arr=DB[col]=DB[col]||[];
@@ -5897,7 +5921,12 @@ var fbSync = {
         if(typeof m.billSeq==='number' && m.billSeq>(DB.billSeq||0)) DB.billSeq=m.billSeq;
         if(m.settings) DB.settings=m.settings;
         if(m.customerStats) DB.customerStats=m.customerStats;
-        fbSync.shadow._meta=JSON.stringify({billSeq:DB.billSeq||0,settings:DB.settings||{},customerStats:DB.customerStats||{}});
+        if(m.tombstones){
+          // merge remote tombstones with ours and purge any resurrected records
+          Object.keys(m.tombstones).forEach(function(id){ fbSync.tomb[id]=m.tombstones[id]; });
+          fbSync.applyTombstones();
+        }
+        fbSync.shadow._meta=JSON.stringify({billSeq:DB.billSeq||0,settings:DB.settings||{},customerStats:DB.customerStats||{},tombstones:fbSync.tomb});
       }
       if(firstMeta){ firstMeta=false; armed(); }
     }, function(err){ console.error('meta listener error',err); });
@@ -5930,6 +5959,7 @@ var fbSync = {
     var self=this;
     try{
       this.ensureIds();
+      this.applyTombstones(); // never push records that were deleted elsewhere
       var writes=[]; // {col,id,data} or {col,id,del:true}
       this.COLS.forEach(function(col){
         var sh=self.shadow[col]=self.shadow[col]||{};
@@ -5937,17 +5967,30 @@ var fbSync = {
         (DB[col]||[]).forEach(function(r){
           if(!r||r.id===undefined) return;
           var id=String(r.id).replace(/\//g,'_');
+          if(self.tomb[id]) return; // tombstoned - skip
           seen[id]=1;
           var data=self.clean(r);
           var str=JSON.stringify(data);
           if(sh[id]!==str){ writes.push({col:col,id:id,data:data}); sh[id]=str; }
         });
         Object.keys(sh).forEach(function(id){
-          if(!seen[id]){ writes.push({col:col,id:id,del:true}); delete sh[id]; }
+          if(!seen[id]){
+            writes.push({col:col,id:id,del:true});
+            delete sh[id];
+            self.tomb[id]=Date.now(); // 🪦 record the deletion so no device resurrects it
+          }
         });
       });
+      // prune tombstones to the newest 4000 so the meta doc stays small
+      var tombIds=Object.keys(this.tomb);
+      if(tombIds.length>4000){
+        tombIds.sort(function(a,b){ return self.tomb[b]-self.tomb[a]; });
+        var pruned={};
+        tombIds.slice(0,4000).forEach(function(id){ pruned[id]=self.tomb[id]; });
+        this.tomb=pruned;
+      }
       // meta
-      var metaNow=JSON.stringify({billSeq:DB.billSeq||0,settings:DB.settings||{},customerStats:DB.customerStats||{}});
+      var metaNow=JSON.stringify({billSeq:DB.billSeq||0,settings:DB.settings||{},customerStats:DB.customerStats||{},tombstones:this.tomb});
       if(this.shadow._meta!==metaNow){
         writes.push({col:'meta',id:'main',data:JSON.parse(metaNow)});
         this.shadow._meta=metaNow;
@@ -6024,7 +6067,19 @@ function dedupeParts(){
       p._score=(salesPids[String(p.id)]?100:0)+(p.desc?10:0)+(p.barcode?10:0)+((p.location&&String(p.location).trim())?3:0)+(p.priceHistory?2:0);
     });
     g.sort(function(a,b){ return b._score-a._score; });
-    keep.push(g[0]);
+    var winner=g[0];
+    // Merge useful fields from the removed copies into the kept one,
+    // so nothing (barcode, description, location) is lost.
+    for(var i=1;i<g.length;i++){
+      var loser=g[i];
+      if(!winner.barcode && loser.barcode) winner.barcode=loser.barcode;
+      if(!winner.desc && loser.desc) winner.desc=loser.desc;
+      if((!winner.location||!String(winner.location).trim()) && loser.location) winner.location=loser.location;
+      if((!winner.category||winner.category==='Other Parts'||winner.category==='Uncategorized') && loser.category) winner.category=loser.category;
+      // keep the larger stock figure so units aren't lost when stock was split
+      if((Number(loser.qty)||0)>(Number(winner.qty)||0)) winner.qty=Number(loser.qty)||0;
+    }
+    keep.push(winner);
     removed+=g.length-1;
   });
   keep.forEach(function(p){ delete p._score; });
