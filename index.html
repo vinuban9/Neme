@@ -5169,7 +5169,10 @@ function findSimilarProducts(invoiceProductName) {
   // ===== PASS 1: PART CODE MATCH (highest priority) =====
   // Compare the invoice's part code against each product's SKU code and name code.
   // This is the key rule: same part number = same product, update the old one.
-  if (invoiceCode && invoiceCode.length >= 3) {
+  // NOTE: only when the code is specific enough (5+ chars). Short prefixes like
+  // "DHD" match dozens of products and cause duplicate-creating ambiguity;
+  // those cases fall through to the full part-number matching below instead.
+  if (invoiceCode && invoiceCode.length >= 5) {
     DB.parts.forEach(product => {
       const skuCode = normalizePartNo(extractPartCode(product.sku || ''));
       const nameCode = normalizePartNo(extractPartCode(product.name || ''));
@@ -6083,16 +6086,41 @@ function dedupeParts(){
     removed+=g.length-1;
   });
   keep.forEach(function(p){ delete p._score; });
-  if(removed===0){ toast('✅ No duplicates found ('+keep.length+' parts)','ok'); return; }
+  // ===== PASS 2: bare part-number duplicates =====
+  // e.g. "DHD 001U" (created from an invoice) duplicating "DHD 001U DAIHATSU CHARADE G30".
+  // Merge ONLY when the long name literally starts with the short name + a space,
+  // and there is exactly ONE such long product (no ambiguity).
+  var merged=0;
+  var shorts=keep.filter(function(p){ return String(p.name||'').trim().length<=14; });
+  shorts.forEach(function(sp){
+    var sn=String(sp.name||'').trim().toUpperCase();
+    if(sn.length<6) return; // too generic to merge safely
+    var longs=keep.filter(function(lp){
+      return lp!==sp && String(lp.name||'').trim().toUpperCase().indexOf(sn+' ')===0;
+    });
+    if(longs.length!==1) return; // none or ambiguous - leave it alone
+    var lp=longs[0];
+    // combine stock, and fill any gaps in the kept product
+    lp.qty=(Number(lp.qty)||0)+(Number(sp.qty)||0);
+    if((!lp.cost||lp.cost===0) && sp.cost>0) lp.cost=sp.cost;
+    if((!lp.price||lp.price===0) && sp.price>0) lp.price=sp.price;
+    if(!lp.barcode && sp.barcode) lp.barcode=sp.barcode;
+    if(!lp.desc && sp.desc) lp.desc=sp.desc;
+    keep.splice(keep.indexOf(sp),1);
+    merged++;
+  });
+
+  var total=removed+merged;
+  if(total===0){ toast('✅ No duplicates found ('+keep.length+' parts)','ok'); return; }
   showConfirm(
     '🧹 Remove Duplicates',
-    'Found '+removed+' duplicate parts (keeping '+keep.length+'). The copies used in sales / with barcodes &amp; descriptions are kept. Remove the duplicates everywhere (this device + cloud + other devices)?',
+    'Found '+removed+' exact duplicates and '+merged+' invoice-created short-name copies (stock will be combined into the full products). Keeping '+keep.length+' parts. Clean up everywhere?',
     function(){
       DB.parts=keep;
       saveDB(); // sync layer pushes the deletions to the cloud automatically
-      if(typeof logAudit==='function'){ try{ logAudit('cleanup','Removed '+removed+' duplicate parts'); }catch(e){} }
+      if(typeof logAudit==='function'){ try{ logAudit('cleanup','Removed '+total+' duplicate parts'); }catch(e){} }
       renderInv();
-      toast('🧹 Removed '+removed+' duplicates. '+keep.length+' parts remain. Cloud updating…','ok');
+      toast('🧹 Removed '+total+' duplicates. '+keep.length+' parts remain. Cloud updating…','ok');
     }
   );
 }
