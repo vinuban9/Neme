@@ -6137,7 +6137,8 @@ function dedupeParts(){
   css.textContent=
   '#mapp{--mink:#1B2530;--mpaper:#F5F6F8;--mcard:#fff;--mmut:#66727F;--mnavy:#16222E;--mamber:#F2A50C;--mgrn:#1F9D55;--mred:#D64545;--mbrd:#E3E7EC;'
   +'display:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--mpaper);color:var(--mink);min-height:100vh}'
-  +'body.mobile-mode{background:#F5F6F8}'
+  +'body.mobile-mode{background:#F5F6F8;display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
+  +'html.mobile-mode-html{height:auto!important;overflow:auto!important}'
   +'body.mobile-mode > :not(#mapp):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(script):not(style){display:none!important}'
   +'body.mobile-mode #mapp{display:block}'
   +'#mapp *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}'
@@ -6207,6 +6208,12 @@ function initMobileMode(){
     return;
   }
   document.body.classList.add('mobile-mode');
+  document.documentElement.classList.add('mobile-mode-html');
+  // belt & braces: the desktop layout locks scrolling via html,body overflow
+  document.documentElement.style.height='auto';
+  document.documentElement.style.overflow='auto';
+  document.body.style.height='auto';
+  document.body.style.overflow='auto';
   var app=document.createElement('div');
   app.id='mapp';
   app.innerHTML=
@@ -6234,11 +6241,17 @@ function initMobileMode(){
    +'<div class="m-rows" id="m-price-rows"></div>'
    +'<button class="m-more" id="m-pl-more" style="display:none" onclick="window._mPagePl+=200;mRenderPrices(true)">Show more</button>'
    +'</div>'
+   +'<div id="m-page-reports" style="display:none">'
+   +'<div class="m-strip" id="m-rep-money"></div>'
+   +'<div class="m-strip" id="m-rep-stock"></div>'
+   +'<div class="m-rows" id="m-rep-body"></div>'
+   +'</div>'
    +'</div>'
    +'<div id="m-nav">'
    +'<div class="m-tab on" id="m-tab-inv" onclick="mGo(\'inv\')"><span class="ic">📦</span>Inventory</div>'
    +'<div class="m-tab" id="m-tab-sales" onclick="mGo(\'sales\')"><span class="ic">🧾</span>Sales</div>'
    +'<div class="m-tab" id="m-tab-prices" onclick="mGo(\'prices\')"><span class="ic">💰</span>Prices</div>'
+   +'<div class="m-tab" id="m-tab-reports" onclick="mGo(\'reports\')"><span class="ic">📊</span>Reports</div>'
    +'</div>';
   document.body.appendChild(app);
   mRender();
@@ -6246,7 +6259,7 @@ function initMobileMode(){
 
 function mGo(tab){
   window._mTab=tab;
-  ['inv','sales','prices'].forEach(function(t){
+  ['inv','sales','prices','reports'].forEach(function(t){
     document.getElementById('m-page-'+t).style.display = t===tab?'block':'none';
     document.getElementById('m-tab-'+t).classList.toggle('on', t===tab);
   });
@@ -6265,9 +6278,94 @@ function mSetFilter(el){
 function mRender(){
   if(window._mTab==='inv') mRenderInv(true);
   else if(window._mTab==='sales') mRenderSales();
-  else mRenderPrices(true);
+  else if(window._mTab==='prices') mRenderPrices(true);
+  else mRenderReports();
   var sub=document.getElementById('m-sub');
   if(sub) sub.textContent=(DB.parts||[]).length+' parts · '+(DB.sales||[]).length+' bills';
+}
+
+function mRenderReports(){
+  var now=new Date(), today=mDayStr(now);
+  var wAgo=new Date(now.getTime()-7*86400000), mAgo=new Date(now.getTime()-30*86400000);
+  var rev={t:0,w:0,m:0}, prof={t:0,w:0,m:0};
+  var topMap={}, payMap={}, catMap={};
+  var partById={}; (DB.parts||[]).forEach(function(p){ partById[String(p.id)]=p; });
+
+  (DB.sales||[]).forEach(function(s){
+    var d=new Date(s.date), tot=Number(s.total)||0;
+    var isT=mDayStr(d)===today, isW=d>=wAgo, isM=d>=mAgo;
+    // profit = item margins minus the bill discount
+    var pr=0;
+    (s.items||[]).forEach(function(it){
+      pr+=((Number(it.price)||0)-(Number(it.cost)||0))*(Number(it.qty)||0);
+      if(isM){
+        var k=String(it.name||'?');
+        (topMap[k]=topMap[k]||{qty:0,rev:0}).qty+=Number(it.qty)||0;
+        topMap[k].rev+=(Number(it.price)||0)*(Number(it.qty)||0);
+        var part=partById[String(it.pid)];
+        var cat=(part&&part.category)||'Other';
+        catMap[cat]=(catMap[cat]||0)+(Number(it.price)||0)*(Number(it.qty)||0);
+      }
+    });
+    pr-=Number(s.da)||0;
+    if(isT){rev.t+=tot;prof.t+=pr;}
+    if(isW){rev.w+=tot;prof.w+=pr;}
+    if(isM){rev.m+=tot;prof.m+=pr; var pk=String(s.pay||'Other'); payMap[pk]=(payMap[pk]||0)+tot;}
+  });
+
+  var stockCost=0, stockRetail=0;
+  (DB.parts||[]).forEach(function(p){
+    stockCost+=(Number(p.cost)||0)*(Number(p.qty)||0);
+    stockRetail+=(Number(p.price)||0)*(Number(p.qty)||0);
+  });
+
+  document.getElementById('m-rep-money').innerHTML=
+   '<div class="m-stat good"><div class="v" style="font-size:12px">'+fmt(rev.t)+'</div><div class="l">Rev today</div></div>'
+   +'<div class="m-stat"><div class="v" style="font-size:12px">'+fmt(rev.w)+'</div><div class="l">Rev 7d</div></div>'
+   +'<div class="m-stat"><div class="v" style="font-size:12px">'+fmt(rev.m)+'</div><div class="l">Rev 30d</div></div>';
+  document.getElementById('m-rep-stock').innerHTML=
+   '<div class="m-stat good"><div class="v" style="font-size:12px">'+fmt(prof.m)+'</div><div class="l">Profit 30d</div></div>'
+   +'<div class="m-stat"><div class="v" style="font-size:12px">'+fmt(stockCost)+'</div><div class="l">Stock @ cost</div></div>'
+   +'<div class="m-stat"><div class="v" style="font-size:12px">'+fmt(stockRetail)+'</div><div class="l">Stock @ retail</div></div>';
+
+  // top sellers (30d) with mini bars
+  var tops=Object.keys(topMap).map(function(k){return{name:k,qty:topMap[k].qty,rev:topMap[k].rev};})
+    .sort(function(a,b){return b.rev-a.rev;}).slice(0,10);
+  var maxRev=tops.length?tops[0].rev:1;
+  var h='<div class="m-dayh">🏆 Top sellers · last 30 days</div>';
+  if(!tops.length) h+='<div class="m-none">No sales in the last 30 days.</div>';
+  tops.forEach(function(t){
+    var w=Math.max(4,Math.round(t.rev/maxRev*100));
+    h+='<div class="m-row plain">'
+      +'<div class="m-top"><div class="m-name" style="font-size:12.5px">'+escM(t.name)+'</div><div class="m-price" style="font-size:13px">'+fmt(t.rev)+'</div></div>'
+      +'<div style="margin-top:7px;height:6px;border-radius:99px;background:#EDF0F3"><div style="height:6px;border-radius:99px;width:'+w+'%;background:#F2A50C"></div></div>'
+      +'<div class="m-bot"><div class="m-meta">'+t.qty+' sold</div></div></div>';
+  });
+
+  // category revenue (30d)
+  var cats=Object.keys(catMap).map(function(k){return{cat:k,rev:catMap[k]};})
+    .sort(function(a,b){return b.rev-a.rev;}).slice(0,6);
+  if(cats.length){
+    var maxC=cats[0].rev||1;
+    h+='<div class="m-dayh">📂 Category revenue · 30 days</div>';
+    cats.forEach(function(c){
+      var w=Math.max(4,Math.round(c.rev/maxC*100));
+      h+='<div class="m-row plain">'
+        +'<div class="m-top"><div class="m-name" style="font-family:inherit">'+escM(c.cat)+'</div><div class="m-price" style="font-size:13px">'+fmt(c.rev)+'</div></div>'
+        +'<div style="margin-top:7px;height:6px;border-radius:99px;background:#EDF0F3"><div style="height:6px;border-radius:99px;width:'+w+'%;background:#16222E"></div></div>'
+        +'</div>';
+    });
+  }
+
+  // payment split (30d)
+  var pays=Object.keys(payMap).map(function(k){return{pay:k,rev:payMap[k]};}).sort(function(a,b){return b.rev-a.rev;});
+  if(pays.length){
+    h+='<div class="m-dayh">💳 Payments · 30 days</div>';
+    pays.forEach(function(p){
+      h+='<div class="m-row plain"><div class="m-top"><div class="m-name" style="font-family:inherit">'+escM(p.pay)+'</div><div class="m-price" style="font-size:13px">'+fmt(p.rev)+'</div></div></div>';
+    });
+  }
+  document.getElementById('m-rep-body').innerHTML=h;
 }
 
 function mRenderInv(keepScroll){
