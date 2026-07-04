@@ -5744,8 +5744,8 @@ function addAllTableItems(count) {
    - Per-record documents in Firestore; localStorage stays the offline copy
    - saveDB() schedules a debounced diff-push; listeners pull remote changes
    Synced: parts, customers, suppliers, sales, purchaseOrders, invoices, pos,
-           meta (billSeq + settings + customerStats)
-   NOT synced (device-local): priceList, auditLog, invoiceHistory,
+           priceList, meta (billSeq + settings + customerStats + tombstones)
+   NOT synced (device-local): auditLog, invoiceHistory,
            archivedProducts, priceHistory, autoBackups
    ============================================================ */
 var fbSync = {
@@ -5757,7 +5757,7 @@ var fbSync = {
   pushTimer: null,
   pushing: false,
   pushAgain: false,
-  COLS: ['parts','customers','suppliers','sales','purchaseOrders','invoices','pos'],
+  COLS: ['parts','customers','suppliers','sales','purchaseOrders','invoices','pos','priceList'],
 
   // Remove any local records that were deleted elsewhere; never let them re-sync.
   applyTombstones: function(){
