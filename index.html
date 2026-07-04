@@ -5506,6 +5506,10 @@ function finalizeInvoiceSave() {
   if (typeof renderInv === 'function') {
     setTimeout(renderInv, 500);
   }
+  // Refresh mobile view too, if we're on the phone
+  if (document.body.classList.contains('mobile-mode') && typeof mRender === 'function') {
+    setTimeout(mRender, 500);
+  }
 }
 
 function showInvoiceForm(imageData, fileName) {
@@ -6186,7 +6190,13 @@ function dedupeParts(){
   +'.m-tab{flex:1;text-align:center;padding:9px 0 7px;color:var(--mmut);font-size:10px;font-weight:600}'
   +'.m-tab .ic{font-size:20px;display:block;margin-bottom:1px;filter:grayscale(1);opacity:.55}'
   +'.m-tab.on{color:var(--mnavy)}.m-tab.on .ic{filter:none;opacity:1}'
-  +'#m-back{position:fixed;bottom:14px;left:12px;z-index:9999;background:#16222E;color:#fff;border:none;border-radius:99px;font-size:12px;font-weight:700;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.3)}';
+  +'#m-back{position:fixed;bottom:14px;left:12px;z-index:9999;background:#16222E;color:#fff;border:none;border-radius:99px;font-size:12px;font-weight:700;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.3)}'
+  +'#m-scan{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);z-index:60;width:58px;height:58px;border-radius:50%;border:none;background:var(--mamber);color:var(--mnavy);font-size:26px;box-shadow:0 4px 14px rgba(0,0,0,.3)}'
+  +'#m-scan:active{transform:scale(.94)}'
+  /* invoice review + matching modals fit on phone screens */
+  +'body.mobile-mode .overlay .modal{width:96vw!important;max-width:96vw!important;max-height:88vh!important;overflow-y:auto!important;overflow-x:auto!important;padding:12px!important}'
+  +'body.mobile-mode #invoice-modal table{font-size:11px;min-width:640px}'
+  +'body.mobile-mode #invoice-modal .modal>div,body.mobile-mode #invoice-modal .modal{-webkit-overflow-scrolling:touch}';
   document.head.appendChild(css);
 })();
 
@@ -6252,7 +6262,9 @@ function initMobileMode(){
    +'<div class="m-tab" id="m-tab-sales" onclick="mGo(\'sales\')"><span class="ic">🧾</span>Sales</div>'
    +'<div class="m-tab" id="m-tab-prices" onclick="mGo(\'prices\')"><span class="ic">💰</span>Prices</div>'
    +'<div class="m-tab" id="m-tab-reports" onclick="mGo(\'reports\')"><span class="ic">📊</span>Reports</div>'
-   +'</div>';
+   +'</div>'
+   +'<button id="m-scan" title="Scan supplier invoice" onclick="document.getElementById(\'m-inv-file\').click()">📷</button>'
+   +'<input type="file" id="m-inv-file" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleInvoiceUpload(event)">';
   document.body.appendChild(app);
   mRender();
 }
