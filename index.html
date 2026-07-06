@@ -1726,7 +1726,7 @@ function switchPanel(id){
   ge('panel-'+id).classList.add('active');
   var nb=document.querySelector('.tnav[data-panel="'+id+'"]');
   if(nb)nb.classList.add('active');
-  var fn={pos:function(){renderCats();renderProds();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports};
+  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports};
   if(fn[id])fn[id]();
 }
 
@@ -1735,7 +1735,7 @@ function refreshActivePanel(){
   try{
     if(document.body.classList.contains('mobile-mode')){ if(typeof mRender==='function') mRender(); return; }
     var id = window._activePanel || 'pos';
-    var fn={pos:function(){renderCats();renderProds();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports};
+    var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports};
     if(fn[id])fn[id]();
   }catch(e){console.warn('refresh error',e);}
 }
@@ -2312,8 +2312,15 @@ function savePart(){
 function delPart(idx){if(!confirm('Delete "'+DB.parts[idx].name+'"?'))return;DB.parts.splice(idx,1);saveDB();renderInv();toast('Part deleted','ok');}
 
 function renderCustDrop(){
-  ge('cart-cust').innerHTML='<option value="walk-in">- Walk-in Customer -</option>'
-    +DB.customers.map(function(c){return '<option value="'+c.id+'">'+c.fn+' '+c.ln+'</option>';}).join('');
+  var sel=ge('cart-cust');
+  if(!sel) return;
+  var current=sel.value; // keep the customer chosen mid-sale across refreshes
+  sel.innerHTML='<option value="walk-in">- Walk-in Customer -</option>'
+    +(DB.customers||[]).map(function(c){
+      var nm=((c.fn||'')+' '+(c.ln||'')).trim()||c.phone||'Customer';
+      return '<option value="'+c.id+'">'+nm+'</option>';
+    }).join('');
+  if(current && sel.querySelector('option[value="'+current+'"]')) sel.value=current;
 }
 function renderCustList(){
   var q=(ge('cust-search').value||'').toLowerCase();
@@ -3311,7 +3318,9 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   loadDB();
   scheduleAutoBackup();  // NEW: Auto-backup on startup
-  renderCats();renderProds();renderCustDrop();
+  try{renderCats();}catch(e){console.error('boot renderCats:',e);}
+  try{renderProds();}catch(e){console.error('boot renderProds:',e);}
+  try{renderCustDrop();}catch(e){console.error('boot renderCustDrop:',e);}
   updateBackupInfo();
   checkBackupReminder();
   var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js';sc.onerror=function(){};document.head.appendChild(sc);
