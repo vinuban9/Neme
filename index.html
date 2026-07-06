@@ -206,7 +206,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div class="inv-tb">
     <input style="flex:1;min-width:150px" placeholder="Search name, SKU or barcode..." id="inv-search">
     <select id="inv-cat" style="width:160px"><option value="">All Categories</option></select>
-    <select id="inv-st" style="width:125px"><option value="">All Stock</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option></select>
+    <select id="inv-st" style="width:125px"><option value="">All Stock</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option><option value="sold">🕒 Recently Sold</option></select>
     <button class="btn bs bsm" id="btn-scan-inv">&#128247; Scan</button>
     <button class="btn bs bsm" id="btn-print-bc">&#127991; Barcode</button>
     <button class="btn bp bsm" onclick="exportInventoryExcel()" title="Download inventory as Excel">📥 Export</button>
@@ -2217,16 +2217,40 @@ function populateInvCatDropdown(){
   if(current&&cats.indexOf(current)>-1)sel.value=current;
 }
 
+// Map of product id -> timestamp of its most recent sale
+function buildLastSoldMap(){
+  var m={};
+  (DB.sales||[]).forEach(function(s){
+    var t=new Date(s.date).getTime();
+    if(!t) return;
+    (s.items||[]).forEach(function(it){
+      if(!it.pid) return;
+      var k=String(it.pid);
+      if(!m[k]||t>m[k]) m[k]=t;
+    });
+  });
+  return m;
+}
+function soldAgoStr(t){
+  if(!t) return '';
+  var d=Math.floor((Date.now()-t)/86400000);
+  return d<=0?'sold today':d===1?'sold yesterday':'sold '+d+'d ago';
+}
+
 function renderInv(){
   populateInvCatDropdown();
   var q=(ge('inv-search').value||'').toLowerCase();
   var cat=ge('inv-cat').value,st=ge('inv-st').value;
+  var soldMap=null,soldCutoff=0;
+  if(st==='sold'){ soldMap=buildLastSoldMap(); soldCutoff=Date.now()-30*86400000; }
   var data=DB.parts.filter(function(p){
     return(!q||p.name.toLowerCase().indexOf(q)>-1||p.sku.toLowerCase().indexOf(q)>-1||(p.barcode||'').indexOf(q)>-1||(p.desc||'').toLowerCase().indexOf(q)>-1)
       &&(!cat||p.category===cat)
-      &&(!st||(st==='ok'&&p.qty>p.reorder)||(st==='low'&&p.qty>0&&p.qty<=p.reorder)||(st==='out'&&p.qty===0));
+      &&(!st||(st==='ok'&&p.qty>p.reorder)||(st==='low'&&p.qty>0&&p.qty<=p.reorder)||(st==='out'&&p.qty===0)||(st==='sold'&&(soldMap[String(p.id)]||0)>=soldCutoff));
   });
-  if(iSC)data.sort(function(a,b){
+  if(st==='sold'){
+    data.sort(function(a,b){ return (soldMap[String(b.id)]||0)-(soldMap[String(a.id)]||0); });
+  } else if(iSC)data.sort(function(a,b){
     var av=iSC==='margin'?(a.price-a.cost)/Math.max(a.price,.01)*100:a[iSC];
     var bv=iSC==='margin'?(b.price-b.cost)/Math.max(b.price,.01)*100:b[iSC];
     return(typeof av==='string'?av.localeCompare(bv):(av-bv))*iSD;
@@ -2241,7 +2265,7 @@ function renderInv(){
     var mg=p.price>0?((p.price-p.cost)/p.price*100).toFixed(0)+'%':'-';
     var idx=DB.parts.indexOf(p);
     h+='<tr><td class="mono">'+p.sku+'</td>'
-      +'<td><div style="font-weight:600">'+p.name+'</div><div class="muted">'+(p.desc?p.desc+(p.location?' • '+p.location:''):(p.location||''))+'</div></td>'
+      +'<td><div style="font-weight:600">'+p.name+'</div><div class="muted">'+(p.desc?p.desc+(p.location?' • '+p.location:''):(p.location||''))+(soldMap?' <span style="color:var(--yel);font-weight:600">🕒 '+soldAgoStr(soldMap[String(p.id)])+'</span>':'')+'</div></td>'
       +'<td>'+p.category+'</td>'
       +'<td><span class="pill p'+s+'">'+sl[s]+' ('+p.qty+')</span></td>'
       +'<td class="mono">'+p.reorder+'</td>'
@@ -6235,9 +6259,10 @@ function initMobileMode(){
    +'<div class="m-search"><input id="m-q" type="search" placeholder="Search part, description, barcode…" oninput="window._mPageInv=200;mRenderInv()">'
    +'<div class="m-chips">'
    +'<div class="m-chip on" data-f="all" onclick="mSetFilter(this)">All</div>'
-   +'<div class="m-chip" data-f="ok" onclick="mSetFilter(this)">In stock</div>'
+   +'<div class="m-chip" data-f="ok" onclick="mSetFilter(this)">In</div>'
    +'<div class="m-chip" data-f="low" onclick="mSetFilter(this)">Low</div>'
    +'<div class="m-chip" data-f="out" onclick="mSetFilter(this)">Out</div>'
+   +'<div class="m-chip" data-f="sold" onclick="mSetFilter(this)">🕒 Sold</div>'
    +'</div></div>'
    +'<div class="m-rows" id="m-inv-rows"></div>'
    +'<button class="m-more" id="m-inv-more" style="display:none" onclick="window._mPageInv+=200;mRenderInv(true)">Show more</button>'
@@ -6383,6 +6408,8 @@ function mRenderReports(){
 function mRenderInv(keepScroll){
   var q=(document.getElementById('m-q').value||'').toLowerCase().trim();
   var f=window._mFilter;
+  var soldM={},soldCut=Date.now()-30*86400000;
+  if(f==='sold') soldM=buildLastSoldMap();
   var low=0,out=0;
   (DB.parts||[]).forEach(function(p){var s=mStKey(p);if(s==='low')low++;if(s==='out')out++;});
   document.getElementById('m-inv-stats').innerHTML=
@@ -6390,21 +6417,24 @@ function mRenderInv(keepScroll){
    +'<div class="m-stat warn"><div class="v">'+low+'</div><div class="l">Low</div></div>'
    +'<div class="m-stat bad"><div class="v">'+out+'</div><div class="l">Out</div></div>';
   var list=(DB.parts||[]).filter(function(p){
-    if(f!=='all' && mStKey(p)!==f) return false;
+    if(f==='sold'){ if((soldM[String(p.id)]||0)<soldCut) return false; }
+    else if(f!=='all' && mStKey(p)!==f) return false;
     if(!q) return true;
     return String(p.name||'').toLowerCase().indexOf(q)>-1
       || String(p.sku||'').toLowerCase().indexOf(q)>-1
       || String(p.desc||'').toLowerCase().indexOf(q)>-1
       || String(p.barcode||'').indexOf(q)>-1;
   });
-  if(!q){var ord={out:0,low:1,ok:2};list.sort(function(a,b){return ord[mStKey(a)]-ord[mStKey(b)]||String(a.name).localeCompare(String(b.name));});}
+  if(f==='sold'){ list.sort(function(a,b){ return (soldM[String(b.id)]||0)-(soldM[String(a.id)]||0); }); }
+  else if(!q){var ord={out:0,low:1,ok:2};list.sort(function(a,b){return ord[mStKey(a)]-ord[mStKey(b)]||String(a.name).localeCompare(String(b.name));});}
   var slice=list.slice(0,window._mPageInv),h='';
   slice.forEach(function(p){
     var s=mStKey(p),sl={ok:'In',low:'Low',out:'Out'};
     h+='<div class="m-row '+s+'">'
       +'<div class="m-top"><div class="m-name">'+escM(p.name)+'</div><div class="m-price">'+fmt(p.price)+'</div></div>'
       +(p.desc?'<div class="m-desc">'+escM(p.desc)+'</div>':'')
-      +'<div class="m-bot"><div class="m-meta">SKU '+escM(p.sku)+(p.category?' · '+escM(p.category):'')+' · Cost '+fmt(p.cost)+'</div>'
+      +'<div class="m-bot"><div class="m-meta">SKU '+escM(p.sku)+(p.category?' · '+escM(p.category):'')+' · Cost '+fmt(p.cost)
+      +(f==='sold'?' · <b style="color:#A66F00">🕒 '+soldAgoStr(soldM[String(p.id)])+'</b>':'')+'</div>'
       +'<div class="m-pill '+s+'">'+sl[s]+' · '+(Number(p.qty)||0)+'</div></div></div>';
   });
   document.getElementById('m-inv-rows').innerHTML=h||'<div class="m-none">No parts match.</div>';
