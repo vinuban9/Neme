@@ -5459,19 +5459,22 @@ function finalizeInvoiceSave() {
   let itemsAdded = 0;
   let itemsUpdated = 0;
   let itemsSkipped = 0;
+  const invReport = []; // per-item record of exactly what happened
   
   items.forEach(item => {
     if (item.action === 'skip') {
       itemsSkipped++;
+      invReport.push('⊘ SKIPPED: ' + item.name);
       console.log(`⊘ Skipped: ${item.name}`);
       return;
     }
     
     if (item.action === 'update' && item.existingProductId) {
       // Update existing product
-      const existingProduct = DB.parts.find(p => p.id === item.existingProductId);
+      const existingProduct = DB.parts.find(p => String(p.id) === String(item.existingProductId));
       if (existingProduct) {
-        existingProduct.qty = (existingProduct.qty || 0) + item.qty;
+        const qtyBefore = existingProduct.qty || 0;
+        existingProduct.qty = qtyBefore + item.qty;
         existingProduct.cost = parseFloat(item.price);
         // Selling price = cost + 15% markup (invoice prices are net cost)
         existingProduct.price = Math.round(existingProduct.cost * 1.15 * 100) / 100;
@@ -5484,9 +5487,18 @@ function finalizeInvoiceSave() {
           existingProduct.desc = item.desc;
         }
         itemsUpdated++;
+        invReport.push('🔄 UPDATED: ' + existingProduct.name + ' | stock ' + qtyBefore + ' → ' + existingProduct.qty + ' | cost ' + fmt(existingProduct.cost));
         console.log(`📦 Updated: ${existingProduct.name} (+${item.qty} units, Total: ${existingProduct.qty}, Sell: Rs. ${existingProduct.price})`);
+      } else {
+        // The matched product no longer exists (deleted/merged) - do NOT lose
+        // the stock silently: create it as a new product instead and say so.
+        console.warn('⚠️ Update target missing for ' + item.name + ' - creating as new');
+        invReport.push('⚠️ ' + item.name + ': matched product was missing - added as NEW instead');
+        item.action = 'new';
       }
-    } else if (item.action === 'new') {
+    }
+    
+    if (item.action === 'new') {
       // Add new product - use chosen category, else auto-detect
       let finalCategory = 'Uncategorized';
       if (item.category && item.category !== '__auto__') {
@@ -5517,9 +5529,16 @@ function finalizeInvoiceSave() {
       };
       DB.parts.push(newProduct);
       itemsAdded++;
+      invReport.push('🆕 NEW: ' + item.name + ' | qty ' + item.qty + ' | cost ' + fmt(newCost) + ' | ' + finalCategory);
       console.log(`✅ Added: ${item.name} [${newProduct.sku}] (${item.qty} units, Cost Rs. ${newCost}, Sell Rs. ${newProduct.price})`);
+    } else if (item.action !== 'skip' && item.action !== 'update') {
+      // No action was ever decided for this item - report it loudly instead of losing it
+      invReport.push('❌ NOT PROCESSED (no action decided): ' + item.name + ' qty ' + item.qty);
+      console.warn('❌ Item had no action:', item);
     }
   });
+  
+  window._lastInvReport = invReport;
   
   // ===== SAVE DATABASE =====
   saveDB();
@@ -5534,6 +5553,21 @@ function finalizeInvoiceSave() {
   message += `Total: ${items.length - itemsSkipped} items processed\n\n⚙️ Stock updated!`;
   
   toast(message, 'ok');
+  
+  // Show the detailed per-item report so nothing can fail silently
+  try{
+    var rep=document.createElement('div');
+    rep.className='overlay open';
+    rep.id='inv-report-ov';
+    rep.innerHTML='<div class="modal" style="max-width:560px;max-height:80vh;overflow-y:auto">'
+      +'<div class="mt">📋 Invoice Result - item by item</div>'
+      +'<div style="font-size:12.5px;line-height:1.9;font-family:ui-monospace,Menlo,monospace;word-break:break-word">'
+      +invReport.map(function(l){return '<div style="padding:4px 0;border-bottom:1px solid var(--brd)">'+l+'</div>';}).join('')
+      +'</div>'
+      +'<button class="btn" style="width:100%;margin-top:14px" onclick="document.getElementById(\'inv-report-ov\').remove()">OK</button>'
+      +'</div>';
+    document.body.appendChild(rep);
+  }catch(e){console.warn('report modal:',e);}
   
   // Refresh inventory display
   if (typeof renderInv === 'function') {
