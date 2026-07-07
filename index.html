@@ -5938,12 +5938,25 @@ var fbSync = {
               return;
             }
             var rec=ch.doc.data();
-            self.shadow[col][id]=JSON.stringify(rec);
+            var remoteStr=JSON.stringify(rec);
             var arr=DB[col]=DB[col]||[];
             var at=-1;
             for(var i=0;i<arr.length;i++){ if(String(arr[i].id)===id){ at=i; break; } }
             var localStr=at>-1?JSON.stringify(self.clean(arr[at])):null;
-            if(localStr!==JSON.stringify(rec)){ if(at>-1) arr[at]=rec; else arr.push(rec); changed=true; }
+            var prevShadow=self.shadow[col][id];
+            // 🛡️ DIRTY CHECK: if this record has LOCAL changes that haven't been
+            // pushed yet (local differs from last-synced state), the incoming
+            // snapshot must NOT overwrite them - our push will send them shortly.
+            // (Fixes phone edits being reverted by the reconnect snapshot after
+            // the camera suspends the app.)
+            var locallyDirty = at>-1 && prevShadow!==undefined && localStr!==prevShadow;
+            if(locallyDirty && localStr!==remoteStr){
+              console.log('⏳ keeping unpushed local edit for',col,id);
+              // do NOT update shadow - so the next push still sees the local change
+            } else {
+              self.shadow[col][id]=remoteStr;
+              if(localStr!==remoteStr){ if(at>-1) arr[at]=rec; else arr.push(rec); changed=true; }
+            }
           }
         });
         if(changed && self.ready){
@@ -6506,6 +6519,11 @@ try{ initMobileMode(); }catch(e){ console.warn('mobile mode skipped:',e); }
 
 // boot cloud sync after the app is up
 try{ fbSync.boot(); }catch(e){ console.warn('fbSync boot skipped:',e); }
+// when the app returns from background (camera, app switch), make sure any
+// pending local changes get pushed - iOS suspends timers while backgrounded
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible' && window.fbSync && fbSync.ready) fbSync.schedulePush();
+});
 
 </script>
 </body>
