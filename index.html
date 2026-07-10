@@ -1092,8 +1092,18 @@ function extractPartCode(str){
   // MK/SEIKEN style: alphanumeric code possibly with dashes (e.g. "D2174M-01", "SC40083R", "SK-83511R", "070-60244", "SP-M26")
   var single=/^([A-Z]{1,4}-?[A-Z]?\d{2,6}[A-Z]?(?:-?\d{1,2})?|[A-Z]{2,3}-[A-Z]?\d{1,4}|\d{3}-\d{4,6})/i.exec(s);
   if(single)return single[1];
+  // Brand-prefixed names (e.g. "EXEDY NSC 527 C/C NIS URVAN"): the first word is
+  // a pure-letters brand, the REAL part code comes after it - extract from there.
+  var parts=s.split(/\s+/);
+  if(parts.length>1 && /^[A-Z]+$/i.test(parts[0])){
+    var rest=parts.slice(1).join(' ');
+    var e2=/^([A-Z]{2,4}\s+\d{3,4}[A-Z]?(?:\/[A-Z0-9]+)?)/i.exec(rest);
+    if(e2)return e2[1];
+    var s2=/^([A-Z]{1,4}-?[A-Z]?\d{2,6}[A-Z]?(?:-?\d{1,2})?|[A-Z]{2,3}-[A-Z]?\d{1,4}|\d{3}-\d{4,6})/i.exec(rest);
+    if(s2)return s2[1];
+  }
   // Fallback: first whitespace-delimited token
-  return s.split(/\s+/)[0];
+  return parts[0];
 }
 
 // Normalizes by extracting the part code first, then stripping to alphanumerics.
@@ -5203,10 +5213,10 @@ function findSimilarProducts(invoiceProductName) {
   // ===== PASS 1: PART CODE MATCH (highest priority) =====
   // Compare the invoice's part code against each product's SKU code and name code.
   // This is the key rule: same part number = same product, update the old one.
-  // NOTE: only when the code is specific enough (5+ chars). Short prefixes like
-  // "DHD" match dozens of products and cause duplicate-creating ambiguity;
-  // those cases fall through to the full part-number matching below instead.
-  if (invoiceCode && invoiceCode.length >= 5) {
+  // NOTE: only when the code is specific enough: 5+ chars AND contains a digit.
+  // Brand names like "EXEDY" have no digits - matching on them would funnel
+  // every item of that brand into one product. Real part codes have digits.
+  if (invoiceCode && invoiceCode.length >= 5 && /\d/.test(invoiceCode)) {
     DB.parts.forEach(product => {
       const skuCode = normalizePartNo(extractPartCode(product.sku || ''));
       const nameCode = normalizePartNo(extractPartCode(product.name || ''));
