@@ -206,7 +206,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div class="inv-tb">
     <input style="flex:1;min-width:150px" placeholder="Search name, SKU or barcode..." id="inv-search">
     <select id="inv-cat" style="width:160px"><option value="">All Categories</option></select>
-    <select id="inv-st" style="width:125px"><option value="">All Stock</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option><option value="sold">🕒 Recently Sold</option><option value="dead">📉 Dead Stock (90d+)</option></select>
+    <select id="inv-st" style="width:125px"><option value="">All Stock</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option><option value="sold">🕒 Recently Sold</option></select>
     <button class="btn bs bsm" id="btn-scan-inv">&#128247; Scan</button>
     <button class="btn bs bsm" id="btn-print-bc">&#127991; Barcode</button>
     <button class="btn bp bsm" onclick="exportInventoryExcel()" title="Download inventory as Excel">📥 Export</button>
@@ -337,21 +337,6 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
       <div class="rcard"><div class="rv" id="r-low">0</div><div class="rl">Low Stock Items</div></div>
       <div class="rcard blue"><div class="rv" id="r-ival">$0</div><div class="rl">Inventory Value</div></div>
     </div>
-    <div style="margin-top:18px" class="tw">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">🏭 Supplier Performance</div>
-      <table><thead><tr><th>Supplier</th><th>Invoices</th><th>Purchased (Cost)</th><th>Revenue Generated</th><th>Gross Margin</th><th>Margin %</th></tr></thead><tbody id="supplier-perf-body"></tbody></table>
-    </div>
-    <div style="margin-top:18px" class="tw">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:14px">🔔 Reorder List (Low &amp; Out of Stock)</div>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <button class="btn bs" onclick="renderReorderList()">🔄 Refresh</button>
-          <button class="btn bs" onclick="exportReorderList()">📤 Export CSV</button>
-          <button class="btn bs" onclick="printReorderList()">🖨️ Print</button>
-        </div>
-      </div>
-      <table><thead><tr><th>Part</th><th>Category</th><th>Supplier</th><th>Stock</th><th>Reorder Lvl</th><th>Suggest Qty</th><th>Find Source</th></tr></thead><tbody id="reorder-body"></tbody></table>
-    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Recent Sales</div><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th></tr></thead><tbody id="r-sales-body"></tbody></table></div>
       <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Top Products</div><table><thead><tr><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead><tbody id="r-top-body"></tbody></table></div>
@@ -375,13 +360,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 <div class="overlay" id="part-ov"><div class="modal">
   <div class="mt" id="part-title">Add Part</div>
   <div class="fgrid">
-    <div class="fg full">
-      <label>Part Name *</label>
-      <div style="display:flex;gap:8px">
-        <input id="f-name" placeholder="e.g. Oil Filter" style="flex:1">
-        <button type="button" class="btn bs bsm" style="background:#0469a2;color:#fff;border:none;white-space:nowrap" onclick="openPartSouq(ge('f-sku').value||ge('f-name').value)" title="Search this part on PartSouq">🔍 PartSouq</button>
-      </div>
-    </div>
+    <div class="fg full"><label>Part Name *</label><input id="f-name" placeholder="e.g. Oil Filter"></div>
     <div class="fg"><label>SKU *</label><input id="f-sku" placeholder="e.g. C-101"></div>
     <div class="fg"><label>Barcode</label><input id="f-bc" placeholder="Auto if blank"></div>
     <div class="fg"><label>Category</label><select id="f-cat"><option>Air Filter</option><option>Brake Pad</option><option>Brake Shoe</option><option>Brake Washer</option><option>C.V.Joint</option><option>Clutch Cover</option><option>Clutch Plate</option><option>Fuel Filter</option><option>Oil Filter</option><option>Suspension Parts</option><option>Timing Belt Sun</option><option>Water Pump</option><option>Other</option></select></div>
@@ -647,8 +626,7 @@ function renderBills(){
       +'<td>'+(s.pay||'-')+'</td>'
       +'<td style="text-align:center">'+(s.printed?'&#128424;':'<span style="color:var(--mut)">&#10005;</span>')+'</td>'
       +'<td><button class="btn bs bsm bill-view" data-sid="'+s.id+'">&#128065; View</button> '
-      +'<button class="btn bp bsm bill-print" data-sid="'+s.id+'">&#128424; Print</button> '
-      +'<button class="btn bsm bill-wa" data-sid="'+s.id+'" style="background:#25D366;color:#fff">📲 WhatsApp</button></td>'
+      +'<button class="btn bp bsm bill-print" data-sid="'+s.id+'">&#128424; Print</button></td>'
       +'</tr>';
   });
   ge('bills-body').innerHTML=h||'<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:24px">'+(q||dateFilter?'No bills match your search':'No sales yet - bills will appear here after checkout')+'</td></tr>';
@@ -656,10 +634,6 @@ function renderBills(){
   // Wire buttons
   ge('bills-body').querySelectorAll('.bill-view').forEach(function(b){b.addEventListener('click',function(){viewBillDetail(this.getAttribute('data-sid'));});});
   ge('bills-body').querySelectorAll('.bill-print').forEach(function(b){b.addEventListener('click',function(){reprintBill(this.getAttribute('data-sid'));});});
-  ge('bills-body').querySelectorAll('.bill-wa').forEach(function(b){b.addEventListener('click',function(){
-    var sale=(DB.sales||[]).find(function(x){return String(x.id)===b.getAttribute('data-sid');});
-    if(sale) sendReceiptWhatsApp(sale); else toast('Bill not found','err');
-  });});
 }
 
 function deleteAllBills(){
@@ -2169,21 +2143,11 @@ function completeSale(doPrint){
           // NEW: Update customer stats
           updateCustomerStats(cid,cn,t.tot,cart.length);
           
-          // If paid on account/credit, add this bill's total to the customer's running balance (dues)
-          if(sale.pay==='Credit (Account)' && cid && cid!=='walk-in'){
-            var custForCredit=DB.customers.find(function(x){return String(x.id)===String(cid);});
-            if(custForCredit){
-              custForCredit.balance=(Number(custForCredit.balance)||0)+t.tot;
-            }
-          }
-          
           checkStorageSize();
           saveDB();
           if(doPrint){printReceipt(sale);}
           closeOv('co-ov');clearCart();renderProds();
           toast('✅ Sale complete! Bill No: '+billNo+(doPrint?'':' (not printed)'),'ok');
-          window._lastSale=sale;
-          showWhatsAppReceiptPrompt(sale);
         } catch(e) {
           console.error('Error completing sale:', e);
           toast('❌ Error saving sale: '+e.message,'err');
@@ -2244,81 +2208,6 @@ function printReceipt(s){
   window.print();
 }
 
-// ===== WHATSAPP RECEIPT =====
-// Builds a plain-text version of the receipt and opens WhatsApp with it pre-filled.
-// If the sale's customer has a saved phone number, opens their chat directly;
-// otherwise opens WhatsApp's contact picker so you choose who to send it to.
-function buildReceiptText(s){
-  var shopName=(DB.settings&&DB.settings.shopName)||'NUWARA ELIYA MOTOR ENTERPRISE';
-  var lines=[];
-  lines.push('*'+shopName+'*');
-  lines.push('No. 30, Kandy Road, Nuwara Eliya');
-  lines.push('Tel: 077 601 5097 / 075 511 0912');
-  lines.push('');
-  lines.push('Bill No: *'+(s.billNo||'-')+'*');
-  lines.push(new Date(s.date).toLocaleString());
-  lines.push('Customer: '+(s.customer||'Walk-in'));
-  lines.push('----------------------------');
-  (s.items||[]).forEach(function(i){
-    lines.push(i.name);
-    lines.push('  '+i.qty+' x Rs.'+Number(i.price).toFixed(2)+'  =  Rs.'+(i.qty*i.price).toFixed(2));
-  });
-  lines.push('----------------------------');
-  lines.push('Subtotal: Rs.'+Number(s.sub).toFixed(2));
-  if(s.disc>0){
-    var da=typeof s.da==='number'?s.da:(s.sub*s.disc/100);
-    lines.push('Discount ('+Number(s.disc).toFixed(2)+'%): -Rs.'+Number(da).toFixed(2));
-  }
-  lines.push('*TOTAL: Rs.'+Number(s.total).toFixed(2)+'*');
-  lines.push('Payment: '+(s.pay||'-'));
-  lines.push('');
-  lines.push('Thank you for your business! 🙏');
-  return lines.join('\n');
-}
-
-function sendReceiptWhatsApp(s){
-  try{
-    var text=encodeURIComponent(buildReceiptText(s));
-    var phone='';
-    if(s.custId){
-      var c=(DB.customers||[]).find(function(x){ return String(x.id)===String(s.custId); });
-      if(c && c.phone) phone=String(c.phone).replace(/[^0-9+]/g,'');
-    }
-    // Sri Lankan numbers: normalize local 0XXXXXXXXX to +94XXXXXXXXX for wa.me
-    if(phone){
-      if(phone.indexOf('+')!==0){
-        if(phone.indexOf('0')===0) phone='94'+phone.slice(1);
-        else if(phone.indexOf('94')!==0) phone='94'+phone;
-      } else {
-        phone=phone.replace('+','');
-      }
-    }
-    var url = phone
-      ? 'https://wa.me/'+phone+'?text='+text
-      : 'https://wa.me/?text='+text; // no saved number - let the user pick a contact
-    window.open(url,'_blank');
-  }catch(e){
-    console.error('WhatsApp receipt error:',e);
-    toast('❌ Could not open WhatsApp: '+e.message,'err');
-  }
-}
-
-// Small dismissible prompt shown right after checkout, offering to send the
-// receipt via WhatsApp instead of (or in addition to) the printed copy.
-function showWhatsAppReceiptPrompt(sale){
-  try{
-    var old=document.getElementById('wa-receipt-ov'); if(old) old.remove();
-    var el=document.createElement('div');
-    el.id='wa-receipt-ov';
-    el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#16222E;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.35);display:flex;align-items:center;gap:12px;max-width:92vw';
-    el.innerHTML='<div style="font-size:13px">Send bill <b>'+(sale.billNo||'')+'</b> via WhatsApp?</div>'
-      +'<button style="background:#25D366;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-weight:700;font-size:12px;white-space:nowrap" onclick="sendReceiptWhatsApp(window._lastSale);document.getElementById(\'wa-receipt-ov\').remove()">📲 Send</button>'
-      +'<button style="background:transparent;color:#9FB0BF;border:none;font-size:18px;padding:0 4px" onclick="document.getElementById(\'wa-receipt-ov\').remove()">✕</button>';
-    document.body.appendChild(el);
-    setTimeout(function(){ var e2=document.getElementById('wa-receipt-ov'); if(e2) e2.remove(); }, 12000);
-  }catch(e){ console.warn('wa prompt error:',e); }
-}
-
 // Populate the inventory category dropdown from actual inventory data
 function populateInvCatDropdown(){
   var sel=ge('inv-cat');
@@ -2362,18 +2251,15 @@ function renderInv(){
   populateInvCatDropdown();
   var q=(ge('inv-search').value||'').toLowerCase();
   var cat=ge('inv-cat').value,st=ge('inv-st').value;
-  var soldMap=null,soldCutoff=0,deadCutoff=0;
+  var soldMap=null,soldCutoff=0;
   if(st==='sold'){ soldMap=buildLastSoldMap(); soldCutoff=Date.now()-30*86400000; }
-  if(st==='dead'){ soldMap=buildLastSoldMap(); deadCutoff=Date.now()-90*86400000; }
   var data=DB.parts.filter(function(p){
     return(!q||p.name.toLowerCase().indexOf(q)>-1||p.sku.toLowerCase().indexOf(q)>-1||(p.barcode||'').indexOf(q)>-1||(p.desc||'').toLowerCase().indexOf(q)>-1)
       &&(!cat||p.category===cat)
-      &&(!st||(st==='ok'&&p.qty>p.reorder)||(st==='low'&&p.qty>0&&p.qty<=p.reorder)||(st==='out'&&p.qty===0)||(st==='sold'&&(soldMap[String(p.id)]||0)>=soldCutoff)||(st==='dead'&&p.qty>0&&(soldMap[String(p.id)]||0)<deadCutoff));
+      &&(!st||(st==='ok'&&p.qty>p.reorder)||(st==='low'&&p.qty>0&&p.qty<=p.reorder)||(st==='out'&&p.qty===0)||(st==='sold'&&(soldMap[String(p.id)]||0)>=soldCutoff));
   });
   if(st==='sold'){
     data.sort(function(a,b){ return (soldMap[String(b.id)]||0)-(soldMap[String(a.id)]||0); });
-  } else if(st==='dead'){
-    data.sort(function(a,b){ return (soldMap[String(a.id)]||0)-(soldMap[String(b.id)]||0); }); // oldest/never-sold first
   } else if(iSC)data.sort(function(a,b){
     var av=iSC==='margin'?(a.price-a.cost)/Math.max(a.price,.01)*100:a[iSC];
     var bv=iSC==='margin'?(b.price-b.cost)/Math.max(b.price,.01)*100:b[iSC];
@@ -2389,7 +2275,7 @@ function renderInv(){
     var mg=p.price>0?((p.price-p.cost)/p.price*100).toFixed(0)+'%':'-';
     var idx=DB.parts.indexOf(p);
     h+='<tr><td class="mono">'+p.sku+'</td>'
-      +'<td><div style="font-weight:600">'+p.name+'</div><div class="muted">'+(p.desc?p.desc+(p.location?' • '+p.location:''):(p.location||''))+(soldMap&&st==='sold'?' <span style="color:var(--yel);font-weight:600">🕒 '+soldAgoStr(soldMap[String(p.id)])+'</span>':'')+(st==='dead'?' <span style="color:#D64545;font-weight:600">📉 '+(soldMap[String(p.id)]?soldAgoStr(soldMap[String(p.id)]):'never sold')+'</span>':'')+'</div></td>'
+      +'<td><div style="font-weight:600">'+p.name+'</div><div class="muted">'+(p.desc?p.desc+(p.location?' • '+p.location:''):(p.location||''))+(soldMap?' <span style="color:var(--yel);font-weight:600">🕒 '+soldAgoStr(soldMap[String(p.id)])+'</span>':'')+'</div></td>'
       +'<td>'+p.category+'</td>'
       +'<td><span class="pill p'+s+'">'+sl[s]+' ('+p.qty+')</span></td>'
       +'<td class="mono">'+p.reorder+'</td>'
@@ -2398,27 +2284,12 @@ function renderInv(){
       +'<td class="mono" style="color:var(--grn)">'+mg+'</td>'
       +'<td class="mono" style="font-size:11px">'+(p.barcode||'-')+'</td>'
       +'<td style="white-space:nowrap">'
-      +'<a href="#" class="btn bs bsm inv-psq" data-sku="'+p.sku+'" title="Search this part on PartSouq" style="background:#0469a2;color:#fff;border:none">🔍</a> '
       +'<button class="btn bs bsm inv-edit" data-idx="'+idx+'">Edit</button> '
       +'<button class="btn bd bsm inv-del" data-idx="'+idx+'">Del</button></td></tr>';
   });
   tbody.innerHTML=h;
   tbody.querySelectorAll('.inv-edit').forEach(function(btn){btn.addEventListener('click',function(){openPartModal(parseInt(this.getAttribute('data-idx')));});});
   tbody.querySelectorAll('.inv-del').forEach(function(btn){btn.addEventListener('click',function(){delPart(parseInt(this.getAttribute('data-idx')));});});
-  tbody.querySelectorAll('.inv-psq').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();openPartSouq(this.getAttribute('data-sku'));});});
-}
-
-// ===== PARTSOUQ QUICK-SEARCH =====
-// Opens a PartSouq part-number search in a new tab. This is a convenience
-// shortcut only (pre-fills their search box) - not a live data integration,
-// since PartSouq doesn't offer a public API and scraping their site would
-// violate their terms and break the moment their page layout changes.
-function openPartSouq(query){
-  query=String(query||'').trim();
-  if(!query){ toast('No part number to search','err'); return; }
-  // PartSouq matches best on the raw alphanumeric code - strip spaces/slashes
-  var q=query.replace(/[\/\\]/g,' ').trim();
-  window.open('https://partsouq.com/en/search/all?q='+encodeURIComponent(q), '_blank');
 }
 
 function openPartModal(idx){
@@ -2467,13 +2338,10 @@ function renderCustList(){
   var h='';
   data.forEach(function(c){
     var ini=(c.fn[0]||'')+(c.ln[0]||'');
-    var dues=Number(c.balance)||0;
     h+='<div class="citem'+(c.id===selCust?' sel':'')+'" data-cid="'+c.id+'">'
       +'<div class="cav">'+ini.toUpperCase()+'</div>'
-      +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+c.fn+' '+c.ln+'</div>'
-      +'<div class="muted">'+c.type+' - '+c.phone+'</div></div>'
-      +(dues>0?'<div style="font-size:11px;font-weight:700;color:#D64545;background:#FBE4E4;padding:3px 8px;border-radius:99px;white-space:nowrap">Owes '+fmt(dues)+'</div>':'')
-      +'</div>';
+      +'<div><div style="font-weight:600;font-size:13px">'+c.fn+' '+c.ln+'</div>'
+      +'<div class="muted">'+c.type+' - '+c.phone+'</div></div></div>';
   });
   ge('cust-list-body').innerHTML=h;
   ge('cust-list-body').querySelectorAll('.citem').forEach(function(item){
@@ -2490,7 +2358,6 @@ function selCustomer(id){
     return '<tr><td class="mono">'+new Date(s.date).toLocaleDateString()+'</td>'
       +'<td>'+s.items.length+' item(s)</td><td class="price">'+fmt(s.total)+'</td><td>'+s.pay+'</td></tr>';
   }).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:16px">No purchases</td></tr>';
-  var dues=Number(c.balance)||0;
   ge('cust-det').innerHTML='<div style="display:flex;align-items:center;gap:13px;margin-bottom:18px">'
     +'<div class="cav" style="width:48px;height:48px;font-size:18px">'+((c.fn[0]+c.ln[0]).toUpperCase())+'</div>'
     +'<div><div style="font-family:Syne,sans-serif;font-size:19px;font-weight:700">'+c.fn+' '+c.ln+'</div>'
@@ -2503,44 +2370,14 @@ function selCustomer(id){
     +'<div><div class="muted" style="margin-bottom:2px">Phone</div>'+(c.phone||'-')+'</div>'
     +'<div><div class="muted" style="margin-bottom:2px">Email</div>'+(c.email||'-')+'</div>'
     +'<div><div class="muted" style="margin-bottom:2px">Address</div>'+(c.addr||'-')+'</div>'
-    +'<div><div class="muted" style="margin-bottom:2px">Credit Limit</div>'+fmt(c.credit||0)+'</div></div>'
+    +'<div><div class="muted" style="margin-bottom:2px">Credit</div>'+fmt(c.credit||0)+'</div></div>'
     +'<div style="display:flex;gap:13px;margin-bottom:16px">'
     +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif">'+fmt(spent)+'</div><div class="muted">Total Spent</div></div>'
-    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif">'+sales.length+'</div><div class="muted">Transactions</div></div>'
-    +'<div style="background:'+(dues>0?'#FBE4E4':'var(--sur)')+';border:1px solid '+(dues>0?'#D64545':'var(--brd)')+';border-radius:4px;padding:12px;flex:1">'
-    +'<div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif;color:'+(dues>0?'#D64545':'inherit')+'">'+fmt(dues)+'</div>'
-    +'<div class="muted">Outstanding Dues</div>'
-    +(dues>0?'<button class="btn bp bsm" id="cdet-settle" style="margin-top:8px;width:100%">💳 Settle</button>':'')
-    +'</div></div>'
+    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif">'+sales.length+'</div><div class="muted">Transactions</div></div></div>'
     +'<div class="tw"><table><thead><tr><th>Date</th><th>Items</th><th>Total</th><th>Payment</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   ge('cdet-edit').addEventListener('click',function(){openCustModal(cidx);});
   ge('cdet-sale').addEventListener('click',function(){ge('cart-cust').value=id;toast(c.fn+' '+c.ln+' added to sale','ok');});
   ge('cdet-del').addEventListener('click',function(){deleteCustomer(id);});
-  if(ge('cdet-settle')) ge('cdet-settle').addEventListener('click',function(){settleCustomerDues(id);});
-}
-
-// Records a payment against a customer's outstanding balance (dues).
-// Reduces the balance and logs the payment; doesn't touch inventory or sales history.
-function settleCustomerDues(id){
-  var c=DB.customers.find(function(x){return x.id===id;});
-  if(!c){toast('Customer not found','err');return;}
-  var dues=Number(c.balance)||0;
-  if(dues<=0){toast('No outstanding dues for this customer','inf');return;}
-  var amt=prompt('💳 Settle dues for '+c.fn+' '+c.ln+'\n\nOutstanding: '+fmt(dues)+'\n\nEnter amount received:', dues.toFixed(2));
-  if(amt===null) return;
-  amt=parseFloat(amt);
-  if(!amt || amt<=0){ toast('Enter a valid amount','err'); return; }
-  if(amt>dues+0.01){
-    if(!confirm('Amount (Rs.'+amt.toFixed(2)+') is more than the outstanding dues (Rs.'+dues.toFixed(2)+'). Continue anyway?')) return;
-  }
-  c.balance=Math.max(0, dues-amt);
-  if(!DB.dueSettlements) DB.dueSettlements=[];
-  DB.dueSettlements.push({id:'DS'+Date.now(),custId:id,customer:c.fn+' '+c.ln,amount:amt,date:new Date().toISOString(),balanceAfter:c.balance});
-  if(typeof logAudit==='function') logAudit('dues_settled',{customer:c.fn+' '+c.ln,amount:amt,balanceAfter:c.balance});
-  saveDB();
-  renderCustList();
-  selCustomer(id);
-  toast('✅ Recorded Rs.'+amt.toFixed(2)+' payment. Remaining dues: '+fmt(c.balance),'ok');
 }
 function deleteCustomer(id){
   var c=DB.customers.find(function(x){return x.id===id;});
@@ -3339,146 +3176,7 @@ function renderReports(){
   ge('r-sales-body').innerHTML=sales.slice().reverse().slice(0,8).map(function(s){return '<tr><td class="mono">'+new Date(s.date).toLocaleDateString()+'</td><td>'+s.customer+'</td><td>'+s.items.length+' item(s)</td><td class="price">'+fmt(s.total)+'</td></tr>';}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:16px">No sales</td></tr>';
   var pr={};sales.forEach(function(s){s.items.forEach(function(i){if(!pr[i.name])pr[i.name]={qty:0,rev:0};pr[i.name].qty+=i.qty;pr[i.name].rev+=i.price*i.qty;});});
   ge('r-top-body').innerHTML=Object.keys(pr).sort(function(a,b){return pr[b].rev-pr[a].rev;}).slice(0,8).map(function(nm){return '<tr><td style="font-weight:600">'+nm.split(',')[0]+'</td><td class="mono">'+pr[nm].qty+'</td><td class="price">'+fmt(pr[nm].rev)+'</td></tr>';}).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--mut);padding:16px">No data</td></tr>';
-  renderReorderList();
-  renderSupplierPerformance();
 }
-
-// ===== SUPPLIER PERFORMANCE REPORT =====
-// Purchases: from invoice history (cost paid to that supplier).
-// Revenue/Margin: from sales of products currently tagged with that supplier
-// (best available link, since sales don't record which invoice a part came from).
-function renderSupplierPerformance(){
-  var body=ge('supplier-perf-body');
-  if(!body) return;
-  var stats={}; // supplier name -> {invoices, purchased, revenue, cost}
-  function bucket(name){
-    name=name||'Unspecified';
-    if(!stats[name]) stats[name]={invoices:0,purchased:0,revenue:0,cost:0};
-    return stats[name];
-  }
-  // Purchases from invoice history (handles both invoice record shapes used in the app)
-  (DB.invoices||[]).forEach(function(inv){
-    var supName=inv.company||inv.supName||'Unspecified';
-    var b=bucket(supName);
-    b.invoices++;
-    b.purchased+=Number(inv.total)||0;
-  });
-  // Revenue & cost from sales, attributed via each product's current supplier
-  var partById={}; (DB.parts||[]).forEach(function(p){ partById[String(p.id)]=p; });
-  (DB.sales||[]).forEach(function(s){
-    (s.items||[]).forEach(function(it){
-      var part=partById[String(it.pid)];
-      var supName=(part&&part.supplier)||'Unspecified';
-      var b=bucket(supName);
-      b.revenue+=(Number(it.price)||0)*(Number(it.qty)||0);
-      b.cost+=(Number(it.cost)||0)*(Number(it.qty)||0);
-    });
-  });
-  var names=Object.keys(stats).filter(function(n){ return n!=='Unspecified' || stats[n].invoices>0 || stats[n].revenue>0; });
-  if(!names.length){ body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">No supplier data yet - scan some invoices and make some sales first</td></tr>'; return; }
-  names.sort(function(a,b){ return (stats[b].revenue-stats[b].cost)-(stats[a].revenue-stats[a].cost); });
-  body.innerHTML=names.map(function(n){
-    var s=stats[n];
-    var margin=s.revenue-s.cost;
-    var marginPct=s.revenue>0?(margin/s.revenue*100):0;
-    var mColor=marginPct>=20?'#1F9D55':marginPct>=10?'#A66F00':'#D64545';
-    return '<tr><td style="font-weight:600">'+esc(n)+'</td>'
-      +'<td class="mono">'+s.invoices+'</td>'
-      +'<td class="mono">'+fmt(s.purchased)+'</td>'
-      +'<td class="mono">'+fmt(s.revenue)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+fmt(margin)+'</td>'
-      +'<td class="mono" style="font-weight:700;color:'+mColor+'">'+marginPct.toFixed(1)+'%</td></tr>';
-  }).join('');
-}
-
-// ===== RE-ORDER LIST =====
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function getReorderRows(){
-  var rows=(DB.parts||[]).filter(function(p){ return (Number(p.qty)||0)<=(Number(p.reorder)||5); });
-  rows.sort(function(a,b){
-    var ao=a.qty===0?0:1, bo=b.qty===0?0:1;
-    if(ao!==bo) return ao-bo;
-    return (a.supplier||'').localeCompare(b.supplier||'')||String(a.name).localeCompare(String(b.name));
-  });
-  return rows;
-}
-
-function renderReorderList(){
-  var rows=getReorderRows();
-  var body=ge('reorder-body');
-  if(!body) return;
-  if(!rows.length){ body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:16px">🎉 Nothing needs reordering right now</td></tr>'; return; }
-  body.innerHTML=rows.map(function(p){
-    var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-    var isOut=(Number(p.qty)||0)===0;
-    return '<tr'+(isOut?' style="background:#FBE4E4"':'')+'>'
-      +'<td style="font-weight:600">'+esc(p.name)+(p.desc?'<div class="muted" style="font-weight:400">'+esc(p.desc)+'</div>':'')+'</td>'
-      +'<td>'+esc(p.category||'')+'</td>'
-      +'<td>'+esc(p.supplier||'')+'</td>'
-      +'<td class="mono" style="color:'+(isOut?'#D64545':'#A66F00')+';font-weight:700">'+(Number(p.qty)||0)+'</td>'
-      +'<td class="mono">'+(Number(p.reorder)||5)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+suggest+'</td>'
-      +'<td><a href="#" onclick="event.preventDefault();openPartSouq(\''+String(p.sku).replace(/'/g,"\\'")+'\')" style="font-size:12px;font-weight:700;color:#0469a2;text-decoration:none">🔍 Find</a></td>'
-      +'</tr>';
-  }).join('');
-}
-
-function exportReorderList(){
-  var rows=getReorderRows();
-  if(!rows.length){ toast('Nothing to export - stock levels are all healthy 🎉','ok'); return; }
-  var csv='Part Name,Description,Category,Supplier,Current Stock,Reorder Level,Suggested Order Qty\n';
-  rows.forEach(function(p){
-    var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-    csv+='"'+String(p.name||'').replace(/"/g,'""')+'","'+String(p.desc||'').replace(/"/g,'""')+'","'+String(p.category||'').replace(/"/g,'""')+'","'+String(p.supplier||'').replace(/"/g,'""')+'",'+(Number(p.qty)||0)+','+(Number(p.reorder)||5)+','+suggest+'\n';
-  });
-  var blob=new Blob([csv],{type:'text/csv'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  var d=new Date();
-  a.href=url; a.download='reorder-list-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('📤 Reorder list exported ('+rows.length+' items)','ok');
-}
-
-function printReorderList(){
-  var rows=getReorderRows();
-  if(!rows.length){ toast('Nothing to print - stock levels are all healthy 🎉','ok'); return; }
-  var shopName=(DB.settings&&DB.settings.shopName)||'NUWARA ELIYA MOTOR ENTERPRISE';
-  var d=new Date();
-  var bySupplier={};
-  rows.forEach(function(p){ var s=p.supplier||'Unspecified Supplier'; (bySupplier[s]=bySupplier[s]||[]).push(p); });
-  var body='';
-  Object.keys(bySupplier).sort().forEach(function(sup){
-    body+='<h3 style="margin:18px 0 6px;font-size:14px;border-bottom:1px solid #333;padding-bottom:4px">'+esc(sup)+'</h3>';
-    body+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
-      +'<th style="text-align:left;border-bottom:1px solid #999;padding:4px">Part</th>'
-      +'<th style="text-align:left;border-bottom:1px solid #999;padding:4px">Category</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Stock</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Reorder Lvl</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Suggest Qty</th>'
-      +'</tr></thead><tbody>';
-    bySupplier[sup].forEach(function(p){
-      var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-      body+='<tr><td style="padding:4px;border-bottom:1px solid #eee">'+esc(p.name)+(p.desc?'<div style="color:#666;font-size:11px">'+esc(p.desc)+'</div>':'')+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee">'+esc(p.category||'')+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right">'+(Number(p.qty)||0)+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right">'+(Number(p.reorder)||5)+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right;font-weight:700">'+suggest+'</td></tr>';
-    });
-    body+='</tbody></table>';
-  });
-  var win=window.open('','_blank');
-  win.document.write('<html><head><title>Reorder List</title></head><body style="font-family:Arial,sans-serif;padding:20px;color:#111">'
-    +'<h2 style="margin-bottom:2px">'+esc(shopName)+'</h2>'
-    +'<div style="color:#666;font-size:12px;margin-bottom:10px">Reorder List · Generated '+d.toLocaleDateString()+' '+d.toLocaleTimeString()+' · '+rows.length+' items</div>'
-    +body+'</body></html>');
-  win.document.close();
-  win.focus();
-  setTimeout(function(){ win.print(); }, 300);
-}
-
 
 function showApiKeyPrompt(){
   if(ge('fb-config-inp')) ge('fb-config-inp').value=localStorage.getItem('neme_fb_config')||'';
@@ -6585,16 +6283,6 @@ function dedupeParts(){
   +'#m-back{position:fixed;bottom:14px;left:12px;z-index:9999;background:#16222E;color:#fff;border:none;border-radius:99px;font-size:12px;font-weight:700;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.3)}'
   +'#m-scan{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);z-index:60;width:58px;height:58px;border-radius:50%;border:none;background:var(--mamber);color:var(--mnavy);font-size:26px;box-shadow:0 4px 14px rgba(0,0,0,.3)}'
   +'#m-scan:active{transform:scale(.94)}'
-  +'#m-bscan{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 154px);z-index:60;width:50px;height:50px;border-radius:50%;border:none;background:var(--mnavy);color:#fff;font-size:21px;box-shadow:0 4px 14px rgba(0,0,0,.3)}'
-  +'#m-bscan:active{transform:scale(.94)}'
-  +'#m-bscan-ov{position:fixed;inset:0;z-index:9998;background:#000;display:none;flex-direction:column}'
-  +'#m-bscan-ov.open{display:flex}'
-  +'#m-bscan-vid{flex:1;width:100%;background:#000}'
-  +'#m-bscan-top{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#000a,transparent);z-index:2}'
-  +'#m-bscan-top button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600}'
-  +'#m-bscan-hint{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:14px;right:14px;text-align:center;color:#fff;font-size:12px;background:#0007;padding:8px;border-radius:8px;z-index:2}'
-  +'#m-bscan-result{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);background:#fff;border-radius:14px;padding:14px;display:none;z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.4)}'
-  +'#m-bscan-result.show{display:block}'
   /* invoice review + matching modals fit on phone screens */
   +'body.mobile-mode .overlay .modal{width:96vw!important;max-width:96vw!important;max-height:88vh!important;overflow-y:auto!important;overflow-x:auto!important;padding:12px!important}'
   +'body.mobile-mode #invoice-modal table{font-size:11px;min-width:640px}'
@@ -6641,7 +6329,6 @@ function initMobileMode(){
    +'<div class="m-chip" data-f="low" onclick="mSetFilter(this)">Low</div>'
    +'<div class="m-chip" data-f="out" onclick="mSetFilter(this)">Out</div>'
    +'<div class="m-chip" data-f="sold" onclick="mSetFilter(this)">🕒 Sold</div>'
-   +'<div class="m-chip" data-f="dead" onclick="mSetFilter(this)">📉 Dead</div>'
    +'</div></div>'
    +'<div class="m-rows" id="m-inv-rows"></div>'
    +'<button class="m-more" id="m-inv-more" style="display:none" onclick="window._mPageInv+=200;mRenderInv(true)">Show more</button>'
@@ -6668,12 +6355,7 @@ function initMobileMode(){
    +'<div class="m-tab" id="m-tab-reports" onclick="mGo(\'reports\')"><span class="ic">📊</span>Reports</div>'
    +'</div>'
    +'<button id="m-scan" title="Scan supplier invoice" onclick="document.getElementById(\'m-inv-file\').click()">📷</button>'
-   +'<button id="m-bscan" title="Scan barcode for price check" onclick="openMobileBarcodeScanner()">🔍</button>'
-   +'<input type="file" id="m-inv-file" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleInvoiceUpload(event)">'
-   +'<div id="m-bscan-ov"><div id="m-bscan-vid" style="flex:1;width:100%;background:#000"></div>'
-   +'<div id="m-bscan-top"><div style="color:#fff;font-weight:700;font-size:13px">🔍 Scan Barcode</div><button onclick="closeMobileBarcodeScanner()">✕ Close</button></div>'
-   +'<div id="m-bscan-hint">Point camera at the barcode</div>'
-   +'<div id="m-bscan-result"></div></div>';
+   +'<input type="file" id="m-inv-file" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleInvoiceUpload(event)">';
   document.body.appendChild(app);
   mRender();
 }
@@ -6792,8 +6474,8 @@ function mRenderReports(){
 function mRenderInv(keepScroll){
   var q=(document.getElementById('m-q').value||'').toLowerCase().trim();
   var f=window._mFilter;
-  var soldM={},soldCut=Date.now()-30*86400000,deadCut=Date.now()-90*86400000;
-  if(f==='sold'||f==='dead') soldM=buildLastSoldMap();
+  var soldM={},soldCut=Date.now()-30*86400000;
+  if(f==='sold') soldM=buildLastSoldMap();
   var low=0,out=0;
   (DB.parts||[]).forEach(function(p){var s=mStKey(p);if(s==='low')low++;if(s==='out')out++;});
   document.getElementById('m-inv-stats').innerHTML=
@@ -6802,7 +6484,6 @@ function mRenderInv(keepScroll){
    +'<div class="m-stat bad"><div class="v">'+out+'</div><div class="l">Out</div></div>';
   var list=(DB.parts||[]).filter(function(p){
     if(f==='sold'){ if((soldM[String(p.id)]||0)<soldCut) return false; }
-    else if(f==='dead'){ if(!(Number(p.qty)>0 && (soldM[String(p.id)]||0)<deadCut)) return false; }
     else if(f!=='all' && mStKey(p)!==f) return false;
     if(!q) return true;
     return String(p.name||'').toLowerCase().indexOf(q)>-1
@@ -6811,7 +6492,6 @@ function mRenderInv(keepScroll){
       || String(p.barcode||'').indexOf(q)>-1;
   });
   if(f==='sold'){ list.sort(function(a,b){ return (soldM[String(b.id)]||0)-(soldM[String(a.id)]||0); }); }
-  else if(f==='dead'){ list.sort(function(a,b){ return (soldM[String(a.id)]||0)-(soldM[String(b.id)]||0); }); }
   else if(!q){var ord={out:0,low:1,ok:2};list.sort(function(a,b){return ord[mStKey(a)]-ord[mStKey(b)]||String(a.name).localeCompare(String(b.name));});}
   var slice=list.slice(0,window._mPageInv),h='';
   slice.forEach(function(p){
@@ -6820,11 +6500,8 @@ function mRenderInv(keepScroll){
       +'<div class="m-top"><div class="m-name">'+escM(p.name)+'</div><div class="m-price">'+fmt(p.price)+'</div></div>'
       +(p.desc?'<div class="m-desc">'+escM(p.desc)+'</div>':'')
       +'<div class="m-bot"><div class="m-meta">SKU '+escM(p.sku)+(p.category?' · '+escM(p.category):'')+' · Cost '+fmt(p.cost)
-      +(f==='sold'?' · <b style="color:#A66F00">🕒 '+soldAgoStr(soldM[String(p.id)])+'</b>':'')
-      +(f==='dead'?' · <b style="color:#D64545">📉 '+(soldM[String(p.id)]?soldAgoStr(soldM[String(p.id)]):'never sold')+'</b>':'')+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<a href="#" onclick="event.preventDefault();openPartSouq(\''+String(p.sku).replace(/'/g,"\\'")+'\')" style="font-size:11px;font-weight:700;color:#0469a2;text-decoration:none">🔍 PartSouq</a>'
-      +'<div class="m-pill '+s+'">'+sl[s]+' · '+(Number(p.qty)||0)+'</div></div></div></div>';
+      +(f==='sold'?' · <b style="color:#A66F00">🕒 '+soldAgoStr(soldM[String(p.id)])+'</b>':'')+'</div>'
+      +'<div class="m-pill '+s+'">'+sl[s]+' · '+(Number(p.qty)||0)+'</div></div></div>';
   });
   document.getElementById('m-inv-rows').innerHTML=h||'<div class="m-none">No parts match.</div>';
   document.getElementById('m-inv-more').style.display=list.length>window._mPageInv?'block':'none';
@@ -6880,87 +6557,6 @@ function mRenderPrices(keepScroll){
   document.getElementById('m-price-rows').innerHTML=h||'<div class="m-none">'+((DB.priceList||[]).length?'No matches.':'No price list entries yet.')+'</div>';
   document.getElementById('m-pl-more').style.display=list.length>window._mPagePl?'block':'none';
   if(!keepScroll)window.scrollTo(0,0);
-}
-
-/* ============================================================
-   🔍 MOBILE BARCODE SCANNER (camera -> price lookup, view-only)
-   Reuses the Html5Qrcode library already loaded for the desktop scanner
-   (no extra library needed). Looks up the scanned code against DB.parts
-   and shows a result card - it never modifies inventory.
-   ============================================================ */
-var _mBcScanner=null, _mBcBusy=false;
-
-function openMobileBarcodeScanner(){
-  var ov=document.getElementById('m-bscan-ov');
-  var resEl=document.getElementById('m-bscan-result');
-  var hint=document.getElementById('m-bscan-hint');
-  resEl.classList.remove('show'); resEl.innerHTML='';
-  _mBcBusy=false;
-  ov.classList.add('open');
-  // give the overlay a moment to render before Html5Qrcode measures the div
-  setTimeout(function(){
-    if(typeof Html5Qrcode==='undefined'){
-      hint.textContent='⚠️ Scanner still loading - try again in a moment';
-      setTimeout(function(){ if(ov.classList.contains('open')) openMobileBarcodeScanner(); }, 1200);
-      return;
-    }
-    hint.textContent='Point camera at the barcode';
-    try{
-      _mBcScanner=new Html5Qrcode('m-bscan-vid');
-      _mBcScanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 260, height: 140 } },
-        function(decodedText){
-          if(_mBcBusy) return;
-          _mBcBusy=true;
-          handleMobileBarcodeResult(decodedText);
-        },
-        function(){ /* per-frame no-match, ignore */ }
-      ).catch(function(err){
-        hint.textContent='⚠️ Camera unavailable - check permissions';
-        console.error('mobile scanner start error:',err);
-      });
-    }catch(e){
-      hint.textContent='⚠️ '+(e.message||'Scanner error');
-      console.error('mobile scanner error:',e);
-    }
-  }, 150);
-}
-
-function closeMobileBarcodeScanner(){
-  var ov=document.getElementById('m-bscan-ov');
-  ov.classList.remove('open');
-  if(_mBcScanner){
-    try{ _mBcScanner.stop().then(function(){ try{_mBcScanner.clear();}catch(e){} _mBcScanner=null; }); }
-    catch(e){ _mBcScanner=null; }
-  }
-  _mBcBusy=false;
-  document.getElementById('m-bscan-result').classList.remove('show');
-}
-
-function handleMobileBarcodeResult(code){
-  code=String(code||'').trim();
-  var p=(DB.parts||[]).find(function(x){ return String(x.barcode||'').trim()===code; });
-  var resEl=document.getElementById('m-bscan-result');
-  var hint=document.getElementById('m-bscan-hint');
-  if(navigator.vibrate) try{navigator.vibrate(80);}catch(e){}
-  if(p){
-    var s=mStKey(p), sl={ok:'In stock',low:'Low stock',out:'Out of stock'};
-    var pillColor=s==='ok'?'#1F9D55':s==='low'?'#A66F00':'#D64545';
-    resEl.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px">'
-      +'<div style="min-width:0"><div style="font-weight:800;font-size:15px;font-family:ui-monospace,Menlo,monospace">'+escM(p.name)+'</div>'
-      +(p.desc?'<div style="color:#66727F;font-size:12px;margin-top:2px">'+escM(p.desc)+'</div>':'')
-      +'<div style="font-size:11px;color:#66727F;margin-top:6px">SKU '+escM(p.sku)+(p.category?' · '+escM(p.category):'')+'</div></div>'
-      +'<div style="text-align:right;white-space:nowrap"><div style="font-weight:800;font-size:17px">'+fmt(p.price)+'</div>'
-      +'<div style="font-size:11px;font-weight:700;color:'+pillColor+';margin-top:4px">'+sl[s]+' · '+(Number(p.qty)||0)+'</div></div></div>'
-      +'<button style="width:100%;margin-top:12px;padding:10px;border:none;border-radius:9px;background:#16222E;color:#fff;font-weight:700;font-size:13px" onclick="_mBcBusy=false;document.getElementById(\'m-bscan-result\').classList.remove(\'show\')">🔍 Scan Next</button>';
-    hint.textContent='';
-  }else{
-    resEl.innerHTML='<div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#D64545">❌ No product found</div>'
-      +'<div style="font-size:12px;color:#66727F;margin-top:4px;font-family:ui-monospace,Menlo,monospace">Barcode: '+escM(code)+'</div>'
-      +'<button style="width:100%;margin-top:12px;padding:10px;border:none;border-radius:9px;background:#16222E;color:#fff;font-weight:700;font-size:13px" onclick="_mBcBusy=false;document.getElementById(\'m-bscan-result\').classList.remove(\'show\')">🔍 Scan Next</button></div>';
-  }
-  resEl.classList.add('show');
 }
 
 try{ initMobileMode(); }catch(e){ console.warn('mobile mode skipped:',e); }
