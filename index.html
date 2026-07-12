@@ -338,17 +338,6 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
       <div class="rcard"><div class="rv" id="r-low">0</div><div class="rl">Low Stock Items</div></div>
       <div class="rcard blue"><div class="rv" id="r-ival">$0</div><div class="rl">Inventory Value</div></div>
     </div>
-    <div style="margin-top:18px" class="tw">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:14px">🔔 Reorder List (Low &amp; Out of Stock)</div>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <button class="btn bs" onclick="renderReorderList()">🔄 Refresh</button>
-          <button class="btn bs" onclick="exportReorderList()">📤 Export CSV</button>
-          <button class="btn bs" onclick="printReorderList()">🖨️ Print</button>
-        </div>
-      </div>
-      <table><thead><tr><th>Part</th><th>Category</th><th>Supplier</th><th>Stock</th><th>Reorder Lvl</th><th>Suggest Qty</th></tr></thead><tbody id="reorder-body"></tbody></table>
-    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Recent Sales</div><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th></tr></thead><tbody id="r-sales-body"></tbody></table></div>
       <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Top Products</div><table><thead><tr><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead><tbody id="r-top-body"></tbody></table></div>
@@ -3345,7 +3334,6 @@ function renderReports(){
   ge('r-sales-body').innerHTML=sales.slice().reverse().slice(0,8).map(function(s){return '<tr><td class="mono">'+new Date(s.date).toLocaleDateString()+'</td><td>'+s.customer+'</td><td>'+s.items.length+' item(s)</td><td class="price">'+fmt(s.total)+'</td></tr>';}).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:16px">No sales</td></tr>';
   var pr={};sales.forEach(function(s){s.items.forEach(function(i){if(!pr[i.name])pr[i.name]={qty:0,rev:0};pr[i.name].qty+=i.qty;pr[i.name].rev+=i.price*i.qty;});});
   ge('r-top-body').innerHTML=Object.keys(pr).sort(function(a,b){return pr[b].rev-pr[a].rev;}).slice(0,8).map(function(nm){return '<tr><td style="font-weight:600">'+nm.split(',')[0]+'</td><td class="mono">'+pr[nm].qty+'</td><td class="price">'+fmt(pr[nm].rev)+'</td></tr>';}).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--mut);padding:16px">No data</td></tr>';
-  renderReorderList();
 }
 
 // ===== VIN SEARCH (PartSouq) =====
@@ -3404,93 +3392,6 @@ function initVinSearchPanel(){
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter' && !btn.disabled) btn.click(); });
   btn.addEventListener('click',function(){ openPartSouqVin(inp.value); });
   renderVinRecent();
-}
-
-// ===== RE-ORDER LIST =====
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function getReorderRows(){
-  var rows=(DB.parts||[]).filter(function(p){ return (Number(p.qty)||0)<=(Number(p.reorder)||5); });
-  rows.sort(function(a,b){
-    var ao=a.qty===0?0:1, bo=b.qty===0?0:1;
-    if(ao!==bo) return ao-bo;
-    return (a.supplier||'').localeCompare(b.supplier||'')||String(a.name).localeCompare(String(b.name));
-  });
-  return rows;
-}
-
-function renderReorderList(){
-  var rows=getReorderRows();
-  var body=ge('reorder-body');
-  if(!body) return;
-  if(!rows.length){ body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">🎉 Nothing needs reordering right now</td></tr>'; return; }
-  body.innerHTML=rows.map(function(p){
-    var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-    var isOut=(Number(p.qty)||0)===0;
-    return '<tr'+(isOut?' style="background:#FBE4E4"':'')+'>'
-      +'<td style="font-weight:600">'+esc(p.name)+(p.desc?'<div class="muted" style="font-weight:400">'+esc(p.desc)+'</div>':'')+'</td>'
-      +'<td>'+esc(p.category||'')+'</td>'
-      +'<td>'+esc(p.supplier||'')+'</td>'
-      +'<td class="mono" style="color:'+(isOut?'#D64545':'#A66F00')+';font-weight:700">'+(Number(p.qty)||0)+'</td>'
-      +'<td class="mono">'+(Number(p.reorder)||5)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+suggest+'</td>'
-      +'</tr>';
-  }).join('');
-}
-
-function exportReorderList(){
-  var rows=getReorderRows();
-  if(!rows.length){ toast('Nothing to export - stock levels are all healthy 🎉','ok'); return; }
-  var csv='Part Name,Description,Category,Supplier,Current Stock,Reorder Level,Suggested Order Qty\n';
-  rows.forEach(function(p){
-    var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-    csv+='"'+String(p.name||'').replace(/"/g,'""')+'","'+String(p.desc||'').replace(/"/g,'""')+'","'+String(p.category||'').replace(/"/g,'""')+'","'+String(p.supplier||'').replace(/"/g,'""')+'",'+(Number(p.qty)||0)+','+(Number(p.reorder)||5)+','+suggest+'\n';
-  });
-  var blob=new Blob([csv],{type:'text/csv'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  var d=new Date();
-  a.href=url; a.download='reorder-list-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('📤 Reorder list exported ('+rows.length+' items)','ok');
-}
-
-function printReorderList(){
-  var rows=getReorderRows();
-  if(!rows.length){ toast('Nothing to print - stock levels are all healthy 🎉','ok'); return; }
-  var shopName=(DB.settings&&DB.settings.shopName)||'NUWARA ELIYA MOTOR ENTERPRISE';
-  var d=new Date();
-  var bySupplier={};
-  rows.forEach(function(p){ var s=p.supplier||'Unspecified Supplier'; (bySupplier[s]=bySupplier[s]||[]).push(p); });
-  var body='';
-  Object.keys(bySupplier).sort().forEach(function(sup){
-    body+='<h3 style="margin:18px 0 6px;font-size:14px;border-bottom:1px solid #333;padding-bottom:4px">'+esc(sup)+'</h3>';
-    body+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
-      +'<th style="text-align:left;border-bottom:1px solid #999;padding:4px">Part</th>'
-      +'<th style="text-align:left;border-bottom:1px solid #999;padding:4px">Category</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Stock</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Reorder Lvl</th>'
-      +'<th style="text-align:right;border-bottom:1px solid #999;padding:4px">Suggest Qty</th>'
-      +'</tr></thead><tbody>';
-    bySupplier[sup].forEach(function(p){
-      var suggest=Math.max((Number(p.reorder)||5)*2-(Number(p.qty)||0), (Number(p.reorder)||5));
-      body+='<tr><td style="padding:4px;border-bottom:1px solid #eee">'+esc(p.name)+(p.desc?'<div style="color:#666;font-size:11px">'+esc(p.desc)+'</div>':'')+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee">'+esc(p.category||'')+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right">'+(Number(p.qty)||0)+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right">'+(Number(p.reorder)||5)+'</td>'
-        +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right;font-weight:700">'+suggest+'</td></tr>';
-    });
-    body+='</tbody></table>';
-  });
-  var win=window.open('','_blank');
-  win.document.write('<html><head><title>Reorder List</title></head><body style="font-family:Arial,sans-serif;padding:20px;color:#111">'
-    +'<h2 style="margin-bottom:2px">'+esc(shopName)+'</h2>'
-    +'<div style="color:#666;font-size:12px;margin-bottom:10px">Reorder List · Generated '+d.toLocaleDateString()+' '+d.toLocaleTimeString()+' · '+rows.length+' items</div>'
-    +body+'</body></html>');
-  win.document.close();
-  win.focus();
-  setTimeout(function(){ win.print(); }, 300);
 }
 
 
