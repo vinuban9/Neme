@@ -5,8 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nuwara Eliya Motor Enterprise</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  // Apply saved theme before first paint so there's no flash of the wrong colors
+  try{
+    var savedTheme=localStorage.getItem('neme_theme');
+    if(savedTheme==='dark') document.documentElement.setAttribute('data-theme','dark');
+  }catch(e){}
+</script>
 <style>
 :root{--bg:#f5f4f0;--sur:#fff;--sur2:#f0efe9;--brd:#e2e0d8;--ink:#1a1a18;--mut:#8a887e;--acc:#c84b2f;--blu:#2c5f8a;--grn:#2a7a4f;--yel:#c8860a;--nav:#1a1a18}
+[data-theme="dark"]{--bg:#14161a;--sur:#1c1f24;--sur2:#22262c;--brd:#333940;--ink:#eceef0;--mut:#8f96a0;--acc:#e0654a;--blu:#5b9bd5;--grn:#4cb87a;--yel:#e0a83a;--nav:#0d0f12}
+[data-theme="dark"] img,[data-theme="dark"] .logo{filter:none}
+body{transition:background-color .2s ease,color .2s ease}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--ink);display:flex;flex-direction:column}
@@ -46,7 +56,7 @@ thead tr{background:var(--sur2);border-bottom:2px solid var(--brd)}
 th{padding:9px 12px;text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none}
 th:hover{color:var(--ink)}
 tbody tr{border-bottom:1px solid var(--brd)}
-tbody tr:hover{background:#faf9f5}
+tbody tr:hover{background:var(--sur2)}
 td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace}
 .pok{background:#dcf5e9;color:#1a6a3a}.plow{background:#fef3d8;color:#9a6a0a}.pout{background:#fde8e8;color:#9a2020}
@@ -106,7 +116,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .cdet{flex:1;overflow-y:auto;padding:20px;background:var(--bg)}
 .citem{padding:10px 14px;border-bottom:1px solid var(--brd);cursor:pointer;display:flex;gap:10px;align-items:center}
 .citem:hover{background:var(--sur2)}
-.citem.sel{background:#fff8f5;border-left:3px solid var(--acc)}
+.citem.sel{background:var(--sur2);border-left:3px solid var(--acc)}
 .cav{width:34px;height:34px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
 .rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .rcard{background:var(--sur);border:1px solid var(--brd);border-radius:5px;padding:14px;border-top:3px solid var(--acc)}
@@ -115,7 +125,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .rl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-top:4px;font-family:'DM Mono',monospace}
 .rl2{font-size:12px;color:var(--grn);margin-top:3px;font-weight:600}
 .izone{border:2px dashed var(--brd);border-radius:6px;padding:30px 20px;text-align:center;cursor:pointer;background:var(--sur2);position:relative}
-.izone:hover{border-color:var(--acc);background:#fff8f5}
+.izone:hover{border-color:var(--acc);background:var(--sur2)}
 .izone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .ais{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:4px;font-size:13px;font-weight:500;margin:8px 0}
 .ais.thinking{background:#fffbea;border:1px solid #f0d060;color:#7a5800}
@@ -159,6 +169,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="tnav" data-panel="vinsearch">&#128663; VIN Search</button>
   </div>
   <div class="topbar-r">
+    <button class="apikey-btn" id="btn-theme" title="Toggle dark mode">&#127769;</button>
     <button class="apikey-btn" id="btn-apikey">&#128273; API Key</button>
     <span class="clk" id="clock">00:00:00</span>
     <span class="sbadge">NEME</span>
@@ -3344,6 +3355,32 @@ function renderReports(){
 // Lenient on format: full 17-char VINs are standard for most vehicles, but
 // many JDM imports use shorter chassis/frame numbers (e.g. "AE100-1234567"),
 // so we only require a reasonable length rather than strict VIN validation.
+// ===== DARK MODE =====
+function toggleTheme(){
+  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  if(isDark){
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('neme_theme','light');
+  }else{
+    document.documentElement.setAttribute('data-theme','dark');
+    localStorage.setItem('neme_theme','dark');
+  }
+  updateThemeButtonIcon();
+}
+function updateThemeButtonIcon(){
+  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  var btn=ge('btn-theme');
+  if(btn){
+    btn.innerHTML = isDark ? '&#9728;&#65039;' : '&#127769;'; // sun when dark (tap to go light), moon when light
+    btn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+  var mbtn=document.getElementById('m-theme');
+  if(mbtn){
+    mbtn.textContent = isDark ? '☀️' : '🌙';
+    mbtn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+
 function openPartSouqVin(vin){
   vin=String(vin||'').trim().toUpperCase();
   if(!vin){ toast('Enter a VIN or chassis number first','err'); return; }
@@ -3559,6 +3596,8 @@ document.addEventListener('DOMContentLoaded',function(){
   if(ge('btn-backup-restore')) ge('btn-backup-restore').addEventListener('click',function(){ge('backup-file-input').click();});
   if(ge('backup-file-input')) ge('backup-file-input').addEventListener('change',function(){if(this.files[0])restoreBackup(this.files[0]);this.value='';});
   if(ge('btn-apikey')) ge('btn-apikey').addEventListener('click',showApiKeyPrompt);
+  if(ge('btn-theme')) ge('btn-theme').addEventListener('click',toggleTheme);
+  updateThemeButtonIcon();
   if(ge('btn-save-apikey')) ge('btn-save-apikey').addEventListener('click',saveApiKey);
   if(ge('apikey-inp')) ge('apikey-inp').addEventListener('keydown',function(e){if(e.key==='Enter')saveApiKey();});
   if(ge('gcv-api-inp')) ge('gcv-api-inp').addEventListener('keydown',function(e){if(e.key==='Enter')saveApiKey();});
@@ -6473,7 +6512,8 @@ function dedupeParts(){
   css.textContent=
   '#mapp{--mink:#1B2530;--mpaper:#F5F6F8;--mcard:#fff;--mmut:#66727F;--mnavy:#16222E;--mamber:#F2A50C;--mgrn:#1F9D55;--mred:#D64545;--mbrd:#E3E7EC;'
   +'display:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--mpaper);color:var(--mink);min-height:100vh}'
-  +'body.mobile-mode{background:#F5F6F8;display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
+  +'[data-theme="dark"] #mapp{--mink:#ECEEF0;--mpaper:#14161A;--mcard:#1C1F24;--mmut:#8F96A0;--mnavy:#0D0F12;--mamber:#E0A83A;--mgrn:#4CB87A;--mred:#E0654A;--mbrd:#333940}'
+  +'body.mobile-mode{background:var(--mpaper,#F5F6F8);display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
   +'html.mobile-mode-html{height:auto!important;overflow:auto!important}'
   +'body.mobile-mode > :not(#mapp):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(script):not(style){display:none!important}'
   +'body.mobile-mode #mapp{display:block}'
@@ -6483,6 +6523,7 @@ function dedupeParts(){
   +'#m-title{font-size:15px;font-weight:800;letter-spacing:.3px}'
   +'#m-sub{font-size:11px;color:#9FB0BF;margin-top:2px}'
   +'#m-desk{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;padding:8px 11px}'
+  +'#m-theme{position:absolute;right:98px;top:calc(env(safe-area-inset-top,0px) + 10px);background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;padding:8px 10px}'
   +'#m-main{padding:calc(env(safe-area-inset-top,0px) + 64px) 0 calc(env(safe-area-inset-bottom,0px) + 74px)}'
   +'.m-strip{display:flex;gap:8px;padding:12px 12px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch}'
   +'.m-stat{flex:1;min-width:90px;background:var(--mcard);border:1px solid var(--mbrd);border-radius:12px;padding:9px 11px}'
@@ -6535,7 +6576,7 @@ function dedupeParts(){
   +'#m-bscan-top{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#000a,transparent);z-index:2}'
   +'#m-bscan-top button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600}'
   +'#m-bscan-hint{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:14px;right:14px;text-align:center;color:#fff;font-size:12px;background:#0007;padding:8px;border-radius:8px;z-index:2}'
-  +'#m-bscan-result{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);background:#fff;border-radius:14px;padding:14px;display:none;z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.4)}'
+  +'#m-bscan-result{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);background:var(--mcard,#fff);color:var(--mink,#1B2530);border-radius:14px;padding:14px;display:none;z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.4)}'
   +'#m-bscan-result.show{display:block}'
   /* invoice review + matching modals fit on phone screens */
   +'body.mobile-mode .overlay .modal{width:96vw!important;max-width:96vw!important;max-height:88vh!important;overflow-y:auto!important;overflow-x:auto!important;padding:12px!important}'
@@ -6572,6 +6613,7 @@ function initMobileMode(){
   app.id='mapp';
   app.innerHTML=
    '<div id="m-head"><div id="m-title">🔧 NEME AUTO</div><div id="m-sub">Live shop view</div>'
+   +'<button id="m-theme" onclick="toggleTheme()" title="Toggle dark mode">'+(document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙')+'</button>'
    +'<button id="m-desk" onclick="sessionStorage.setItem(\'neme_force_desktop\',\'1\');location.reload()">🖥️ Desktop</button></div>'
    +'<div id="m-main">'
    +'<div id="m-page-inv">'
