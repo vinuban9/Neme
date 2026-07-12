@@ -3347,8 +3347,33 @@ function renderReports(){
 function openPartSouqVin(vin){
   vin=String(vin||'').trim().toUpperCase();
   if(!vin){ toast('Enter a VIN or chassis number first','err'); return; }
-  window.open('https://partsouq.com/en/search/all?q='+encodeURIComponent(vin), '_blank');
+  openInPanel('https://partsouq.com/en/search/all?q='+encodeURIComponent(vin), 'partsouq_panel');
   saveVinToRecent(vin);
+}
+
+// Opens an external site as a compact floating window instead of a full new
+// browser tab, so it feels like a panel over the POS rather than switching
+// away. It's still their real, unmodified site in its own window - just
+// shown without the usual browser chrome. Popups can be blocked by the
+// browser; if so we fall back to a normal tab so the user isn't stuck.
+// On mobile, browsers ignore window-size features and standalone/home-screen
+// apps often block popups outright, so mobile always uses a normal tab.
+function openInPanel(url, name){
+  var isMobile = window.innerWidth <= 760;
+  if(isMobile){ window.open(url, '_blank'); return; }
+  var w=Math.min(1000, Math.round(window.screen.availWidth*0.75));
+  var h=Math.min(780, Math.round(window.screen.availHeight*0.88));
+  var left=Math.round((window.screen.availWidth-w)/2);
+  var top=Math.round((window.screen.availHeight-h)/2);
+  var features='width='+w+',height='+h+',left='+left+',top='+top
+    +',menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+  var win=window.open(url, name||'_blank', features);
+  if(!win || win.closed || typeof win.closed==='undefined'){
+    toast('Pop-up blocked - opening in a new tab instead. Allow pop-ups for this site for a floating window next time.','inf');
+    window.open(url, '_blank');
+  } else {
+    win.focus();
+  }
 }
 
 function saveVinToRecent(vin){
