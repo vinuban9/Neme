@@ -4,24 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nuwara Eliya Motor Enterprise</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Rajdhani:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
   // Apply saved theme before first paint so there's no flash of the wrong colors
   try{
     var savedTheme=localStorage.getItem('neme_theme');
-    if(savedTheme==='dark') document.documentElement.setAttribute('data-theme','dark');
+    if(savedTheme==='light') document.documentElement.setAttribute('data-theme','light');
   }catch(e){}
 </script>
 <style>
-:root{--bg:#f5f4f0;--sur:#fff;--sur2:#f0efe9;--brd:#e2e0d8;--ink:#1a1a18;--mut:#8a887e;--acc:#c84b2f;--blu:#2c5f8a;--grn:#2a7a4f;--yel:#c8860a;--nav:#1a1a18}
-[data-theme="dark"]{--bg:#14161a;--sur:#1c1f24;--sur2:#22262c;--brd:#333940;--ink:#eceef0;--mut:#8f96a0;--acc:#e0654a;--blu:#5b9bd5;--grn:#4cb87a;--yel:#e0a83a;--nav:#0d0f12}
-[data-theme="dark"] img,[data-theme="dark"] .logo{filter:none}
+:root{--bg:#14171b;--sur:#1b1f24;--sur2:#232830;--brd:#33393f;--ink:#eceff3;--mut:#8b93a0;--acc:#ff5a36;--blu:#3fa9f5;--grn:#33d690;--yel:#ffc145;--nav:#0a0c0f}
+[data-theme="light"]{--bg:#edeff2;--sur:#ffffff;--sur2:#e4e7eb;--brd:#d3d7dc;--ink:#171a1e;--mut:#6b7280;--acc:#e8451f;--blu:#1e7fc2;--grn:#16915a;--yel:#c87f00;--nav:#171a1e}
+[data-theme="light"] img,[data-theme="light"] .logo{filter:none}
 body{transition:background-color .2s ease,color .2s ease}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--ink);display:flex;flex-direction:column}
-.topbar{height:52px;background:var(--nav);display:flex;align-items:center;padding:0 16px;flex-shrink:0;z-index:50}
-.logo{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px;text-transform:uppercase;margin-right:20px;white-space:nowrap}
+#app-wrap{display:none;height:100%;flex-direction:column}
+body.unlocked #app-wrap{display:flex}
+body.unlocked #lock-screen{display:none}
+#lock-screen{position:fixed;inset:0;z-index:999;background:radial-gradient(ellipse at 50% 30%,#1b1f24 0%,#0a0c0f 75%);display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif}
+#lock-box{width:320px;max-width:88vw;text-align:center;padding:32px 28px;background:#14171b;border:1px solid #262b32;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+#lock-logo{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;letter-spacing:1px;color:#fff;text-transform:uppercase}
+#lock-logo span{color:#FF5A36}
+#lock-sub{font-size:11px;color:#8b93a0;margin-top:2px;margin-bottom:14px}
+#lock-gauge{display:flex;justify-content:center;margin-bottom:6px}
+#lock-title{font-size:12px;color:#8b93a0;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+#lock-dots{display:flex;justify-content:center;gap:10px;margin-bottom:8px}
+.lock-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid #3a4048;background:transparent;transition:background .12s,border-color .12s}
+.lock-dot.filled{background:#FF5A36;border-color:#FF5A36}
+.lock-dot.err{background:#FF5A5A;border-color:#FF5A5A}
+#lock-err{min-height:16px;font-size:11.5px;color:#FF5A5A;margin-bottom:10px}
+#lock-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lock-key{padding:14px 0;border-radius:10px;border:1px solid #262b32;background:#1b1f24;color:#eceff3;font-size:18px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer}
+.lock-key:active{background:#262b32}
+.lock-key.ghost{font-size:12px;font-weight:600;color:#8b93a0;font-family:'DM Sans',sans-serif}
+#lock-setup-note{font-size:11px;color:#8b93a0;margin-top:12px;line-height:1.5}
+.topbar{height:52px;background:var(--nav);display:flex;align-items:center;padding:0 16px;flex-shrink:0;z-index:50;position:relative;border-bottom:2px solid var(--acc)}
+.logo{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase;margin-right:20px;white-space:nowrap}
 .logo span{color:var(--acc)}
 .tnav-wrap{display:flex;gap:2px;flex:1;overflow-x:auto}
 .tnav{padding:7px 12px;border-radius:3px;cursor:pointer;font-size:12px;font-weight:500;color:#a8a69e;border:none;background:transparent;white-space:nowrap;font-family:'DM Sans',sans-serif}
@@ -35,7 +55,7 @@ body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:
 .panel{display:none;flex:1;overflow:hidden}
 .panel.active{display:flex;flex-direction:column}
 .ph{padding:14px 20px;background:var(--sur);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;flex-shrink:0}
-.pt{font-family:'Syne',sans-serif;font-size:17px;font-weight:700}
+.pt{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700}
 .pb{flex:1;overflow-y:auto;padding:16px 20px}
 .btn{padding:8px 16px;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .bp{background:var(--acc);color:#fff}.bp:hover{background:#b03a20}
@@ -67,7 +87,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .overlay.open{display:flex}
 .modal{background:var(--sur);border:1px solid var(--brd);border-radius:6px;width:520px;max-width:96vw;padding:24px;max-height:90vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.2)}
 .mlg{width:680px}
-.mt{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px}
+.mt{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px}
 .ma{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--brd)}
 .toast{position:fixed;bottom:20px;right:20px;padding:11px 18px;border-radius:4px;font-weight:600;font-size:13px;z-index:500;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -91,7 +111,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .pcard-st{font-size:11px;margin-top:1px}
 .stok{color:var(--grn)}.stlow{color:var(--yel)}.stout{color:var(--acc)}
 .ch{padding:11px 13px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.cht{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.cht{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700}
 .cb{flex:1;overflow-y:auto}
 .ce{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--mut);gap:8px;padding:20px}
 .ci{padding:9px 12px;border-bottom:1px solid var(--brd);display:flex;gap:8px;align-items:flex-start}
@@ -121,7 +141,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 .rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .rcard{background:var(--sur);border:1px solid var(--brd);border-radius:5px;padding:14px;border-top:3px solid var(--acc)}
 .rcard.blue{border-top-color:var(--blu)}.rcard.green{border-top-color:var(--grn)}.rcard.yellow{border-top-color:var(--yel)}
-.rv{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;line-height:1}
+.rv{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1;letter-spacing:.3px}
 .rl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-top:4px;font-family:'DM Mono',monospace}
 .rl2{font-size:12px;color:var(--grn);margin-top:3px;font-weight:600}
 .izone{border:2px dashed var(--brd);border-radius:6px;padding:30px 20px;text-align:center;cursor:pointer;background:var(--sur2);position:relative}
@@ -156,11 +176,43 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 </style>
 </head>
 <body>
+
+<!-- ===== PIN LOCK SCREEN ===== -->
+<div id="lock-screen">
+  <div id="lock-box">
+    <div id="lock-logo">NEME <span>AUTO</span></div>
+    <div id="lock-sub">Nuwara Eliya Motor Enterprise</div>
+    <div id="lock-gauge">
+      <svg width="88" height="50" viewBox="0 0 60 32" style="overflow:visible">
+        <path d="M 4 30 A 26 26 0 0 1 56 30" fill="none" stroke="#33393F" stroke-width="4" stroke-linecap="round"/>
+        <path id="lock-gauge-arc" d="M 4 30 A 26 26 0 0 1 56 30" fill="none" stroke="#FF5A36" stroke-width="4" stroke-linecap="round" stroke-dasharray="81.68" stroke-dashoffset="81.68"/>
+      </svg>
+    </div>
+    <div id="lock-title">Enter PIN</div>
+    <div id="lock-dots">
+      <span class="lock-dot" data-i="0"></span><span class="lock-dot" data-i="1"></span>
+      <span class="lock-dot" data-i="2"></span><span class="lock-dot" data-i="3"></span>
+    </div>
+    <div id="lock-err"></div>
+    <div id="lock-setup-note" style="display:none"></div>
+    <div id="lock-pad">
+      <button class="lock-key" data-k="1">1</button><button class="lock-key" data-k="2">2</button><button class="lock-key" data-k="3">3</button>
+      <button class="lock-key" data-k="4">4</button><button class="lock-key" data-k="5">5</button><button class="lock-key" data-k="6">6</button>
+      <button class="lock-key" data-k="7">7</button><button class="lock-key" data-k="8">8</button><button class="lock-key" data-k="9">9</button>
+      <button class="lock-key ghost" id="lock-reset-btn">Reset</button><button class="lock-key" data-k="0">0</button><button class="lock-key ghost" id="lock-back">&#9003;</button>
+    </div>
+    <div id="lock-forgot" style="margin-top:14px;font-size:11px;color:#5c636e;cursor:pointer;text-decoration:underline">Forgot PIN?</div>
+  </div>
+</div>
+
+<div id="app-wrap">
 <div class="topbar">
   <div class="logo">NEME <span>Auto</span></div>
   <div class="tnav-wrap">
-    <button class="tnav active" data-panel="pos">&#128722; POS</button>
+    <button class="tnav active" data-panel="home">&#127968; Home</button>
+    <button class="tnav" data-panel="pos">&#128722; POS</button>
     <button class="tnav" data-panel="inventory">&#128230; Inventory</button>
+
     <button class="tnav" data-panel="customers">&#128100; Customers</button>
     <button class="tnav" data-panel="suppliers">&#127981; Suppliers</button>
     <button class="tnav" data-panel="bills">&#129534; Bills</button>
@@ -177,7 +229,29 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 </div>
 <div class="app-body">
 
-<div class="panel active" id="panel-pos">
+<div class="panel active" id="panel-home">
+  <div class="ph">
+    <div class="pt">&#127968; Home</div>
+  </div>
+  <div class="pb">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="text-align:center;margin:20px 0 28px">
+        <div id="home-greeting" style="font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700"></div>
+        <div id="home-date" style="font-size:12.5px;color:var(--mut);margin-top:4px"></div>
+      </div>
+      <div class="rgrid" style="margin-bottom:24px">
+        <div class="rcard"><div class="rv" id="h-sales">Rs. 0</div><div class="rl">Sales Today</div></div>
+        <div class="rcard green"><div class="rv" id="h-txns">0</div><div class="rl">Transactions Today</div></div>
+        <div class="rcard yellow"><div class="rv" id="h-low">0</div><div class="rl">Low / Out of Stock</div></div>
+        <div class="rcard blue"><div class="rv" id="h-parts">0</div><div class="rl">Total Parts</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Quick Access</div>
+      <div id="home-quick" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-pos">
   <div class="pos-l">
     <div class="psb">
       <input id="pos-search" placeholder="Search part name, SKU or barcode....">
@@ -269,11 +343,11 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div class="pb">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
-        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px">Suppliers</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px">Suppliers</div>
         <div class="tw"><table><thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Edit</th></tr></thead><tbody id="sup-body"></tbody></table></div>
       </div>
       <div>
-        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px">Purchase Orders</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px">Purchase Orders</div>
         <div class="tw"><table><thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="po-body"></tbody></table></div>
       </div>
     </div>
@@ -343,18 +417,18 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div class="pb">
     <div class="rgrid">
       <div class="rcard"><div class="rv" id="r-sales">$0</div><div class="rl">Total Sales</div><div class="rl2" id="r-scnt"></div></div>
-      <div class="rcard blue"><div class="rv" id="r-profit">$0</div><div class="rl">Gross Profit</div><div class="rl2" id="r-margin"></div></div>
+      <div class="rcard blue" style="position:relative"><div class="rv" id="r-profit">$0</div><div class="rl">Gross Profit</div><div class="rl2" id="r-margin"></div><div id="r-margin-gauge" style="position:absolute;right:10px;top:10px"></div></div>
       <div class="rcard green"><div class="rv" id="r-txns">0</div><div class="rl">Transactions</div><div class="rl2" id="r-avg"></div></div>
       <div class="rcard yellow"><div class="rv" id="r-top">-</div><div class="rl">Top Selling Part</div></div>
       <div class="rcard"><div class="rv" id="r-low">0</div><div class="rl">Low Stock Items</div></div>
       <div class="rcard blue"><div class="rv" id="r-ival">$0</div><div class="rl">Inventory Value</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Recent Sales</div><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th></tr></thead><tbody id="r-sales-body"></tbody></table></div>
-      <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Syne',sans-serif;font-size:14px">Top Products</div><table><thead><tr><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead><tbody id="r-top-body"></tbody></table></div>
+      <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:14px">Recent Sales</div><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th></tr></thead><tbody id="r-sales-body"></tbody></table></div>
+      <div class="tw"><div style="padding:11px 14px;border-bottom:1px solid var(--brd);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:14px">Top Products</div><table><thead><tr><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead><tbody id="r-top-body"></tbody></table></div>
     </div>
     <div style="margin-top:18px;background:var(--sur2);border:1px solid var(--brd);border-radius:8px;padding:16px">
-      <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:15px;margin-bottom:4px">&#128190; Backup &amp; Restore</div>
+      <div style="font-weight:700;font-family:'Rajdhani',sans-serif;font-size:15px;margin-bottom:4px">&#128190; Backup &amp; Restore</div>
       <div style="font-size:12px;color:var(--mut);margin-bottom:12px">Your data is stored only in this browser. Download a backup regularly and keep it safe (phone, Google Drive, USB). You can restore it anytime or move it to another device.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <button class="btn bp bsm" id="btn-backup-download">&#128229; Download Backup</button>
@@ -375,7 +449,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
       <div class="tw" style="padding:24px">
         <div style="text-align:center;margin-bottom:20px">
           <div style="font-size:38px;margin-bottom:8px">🚗</div>
-          <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700">Look up a vehicle's parts by VIN</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700">Look up a vehicle's parts by VIN</div>
           <div class="muted" style="font-size:12.5px;margin-top:6px;line-height:1.6">Enter the 17-character Vehicle Identification Number (chassis number) and open PartSouq's parts catalog for that exact vehicle - genuine OEM part numbers, diagrams, and cross-references.</div>
         </div>
         <div class="fg full">
@@ -510,6 +584,14 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     </p>
   </div>
   
+  <div style="background:var(--sur2);padding:14px;border-radius:4px;margin-bottom:16px">
+    <div style="font-weight:600;margin-bottom:10px">🔒 App Lock (PIN)</div>
+    <p style="font-size:12px;color:var(--mut);margin-bottom:10px;line-height:1.6">
+      A 4-digit PIN protects this device's copy of NEME POS on startup. Works fully offline - it's not tied to your cloud account.
+    </p>
+    <button class="btn bs bsm" onclick="changePin()">🔑 Change PIN</button>
+  </div>
+  
   <div style="background:var(--sur2);padding:14px;border-radius:4px;margin-bottom:16px;border:1px solid var(--acc)">
     <div style="font-weight:600;margin-bottom:10px">☁️ Cloud Sync - Firebase (FREE - syncs PC &amp; phone)</div>
     <p style="font-size:12px;color:var(--mut);margin-bottom:10px;line-height:1.6">
@@ -583,6 +665,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 
 <div id="pra"></div>
 <div class="toast" id="toast"></div>
+</div><!-- /app-wrap -->
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
@@ -1783,7 +1866,7 @@ function switchPanel(id){
   ge('panel-'+id).classList.add('active');
   var nb=document.querySelector('.tnav[data-panel="'+id+'"]');
   if(nb)nb.classList.add('active');
-  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel};
+  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel,home:renderHome};
   if(fn[id])fn[id]();
 }
 
@@ -1791,8 +1874,8 @@ function switchPanel(id){
 function refreshActivePanel(){
   try{
     if(document.body.classList.contains('mobile-mode')){ if(typeof mRender==='function') mRender(); return; }
-    var id = window._activePanel || 'pos';
-    var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports};
+    var id = window._activePanel || 'home';
+    var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports,home:renderHome};
     if(fn[id])fn[id]();
   }catch(e){console.warn('refresh error',e);}
 }
@@ -2499,7 +2582,7 @@ function selCustomer(id){
   var dues=Number(c.balance)||0;
   ge('cust-det').innerHTML='<div style="display:flex;align-items:center;gap:13px;margin-bottom:18px">'
     +'<div class="cav" style="width:48px;height:48px;font-size:18px">'+((c.fn[0]+c.ln[0]).toUpperCase())+'</div>'
-    +'<div><div style="font-family:Syne,sans-serif;font-size:19px;font-weight:700">'+c.fn+' '+c.ln+'</div>'
+    +'<div><div style="font-family:Rajdhani,sans-serif;font-size:19px;font-weight:700">'+c.fn+' '+c.ln+'</div>'
     +'<div class="muted">'+c.type+'</div></div>'
     +'<div style="margin-left:auto;display:flex;gap:7px">'
     +'<button class="btn bs bsm" id="cdet-edit">Edit</button>'
@@ -2511,10 +2594,10 @@ function selCustomer(id){
     +'<div><div class="muted" style="margin-bottom:2px">Address</div>'+(c.addr||'-')+'</div>'
     +'<div><div class="muted" style="margin-bottom:2px">Credit Limit</div>'+fmt(c.credit||0)+'</div></div>'
     +'<div style="display:flex;gap:13px;margin-bottom:16px">'
-    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif">'+fmt(spent)+'</div><div class="muted">Total Spent</div></div>'
-    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif">'+sales.length+'</div><div class="muted">Transactions</div></div>'
+    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Rajdhani,sans-serif">'+fmt(spent)+'</div><div class="muted">Total Spent</div></div>'
+    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:4px;padding:12px;flex:1"><div style="font-size:20px;font-weight:700;font-family:Rajdhani,sans-serif">'+sales.length+'</div><div class="muted">Transactions</div></div>'
     +'<div style="background:'+(dues>0?'#FBE4E4':'var(--sur)')+';border:1px solid '+(dues>0?'#D64545':'var(--brd)')+';border-radius:4px;padding:12px;flex:1">'
-    +'<div style="font-size:20px;font-weight:700;font-family:Syne,sans-serif;color:'+(dues>0?'#D64545':'inherit')+'">'+fmt(dues)+'</div>'
+    +'<div style="font-size:20px;font-weight:700;font-family:Rajdhani,sans-serif;color:'+(dues>0?'#D64545':'inherit')+'">'+fmt(dues)+'</div>'
     +'<div class="muted">Outstanding Dues</div>'
     +(dues>0?'<button class="btn bp bsm" id="cdet-settle" style="margin-top:8px;width:100%">💳 Settle</button>':'')
     +'</div></div>'
@@ -3332,13 +3415,14 @@ function renderReports(){
   var sales=DB.sales.filter(function(s){return new Date(s.date)>=cut;});
   var ts=sales.reduce(function(a,s){return a+s.total;},0);
   var tc=sales.reduce(function(a,s){return a+s.items.reduce(function(b,i){return b+(i.cost||0)*i.qty;},0);},0);
-  var profit=ts-tc,margin=ts>0?(profit/ts*100).toFixed(1)+'%':'-';
+  var profit=ts-tc,marginPct=ts>0?(profit/ts*100):0,margin=ts>0?marginPct.toFixed(1)+'%':'-';
   var ival=DB.parts.reduce(function(a,p){return a+p.qty*p.cost;},0);
   var low=DB.parts.filter(function(p){return p.qty<=p.reorder;}).length;
   var pq={};sales.forEach(function(s){s.items.forEach(function(i){pq[i.name]=(pq[i.name]||0)+i.qty;});});
   var top=Object.keys(pq).sort(function(a,b){return pq[b]-pq[a];})[0];
   ge('r-sales').textContent='Rs. '+ts.toFixed(0);ge('r-scnt').textContent=sales.length+' transactions';
   ge('r-profit').textContent='Rs. '+profit.toFixed(0);ge('r-margin').textContent='Margin: '+margin;
+  if(ge('r-margin-gauge')) ge('r-margin-gauge').innerHTML = ts>0 ? buildMarginGauge(marginPct) : '';
   ge('r-txns').textContent=sales.length;ge('r-avg').textContent='Avg '+fmt(sales.length?ts/sales.length:0);
   ge('r-top').textContent=top?top.split(' ').slice(0,2).join(' '):'-';
   ge('r-low').textContent=low;ge('r-ival').textContent='Rs. '+ival.toFixed(0);
@@ -3355,30 +3439,241 @@ function renderReports(){
 // Lenient on format: full 17-char VINs are standard for most vehicles, but
 // many JDM imports use shorter chassis/frame numbers (e.g. "AE100-1234567"),
 // so we only require a reasonable length rather than strict VIN validation.
-// ===== DARK MODE =====
-function toggleTheme(){
-  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
-  if(isDark){
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('neme_theme','light');
+// ===== HOME DASHBOARD =====
+function renderHome(){
+  var now=new Date();
+  var hr=now.getHours();
+  var greet = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  var g=ge('home-greeting'); if(g) g.textContent=greet+'! 🔧';
+  var d=ge('home-date'); if(d) d.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  var todayStr=now.toDateString();
+  var todaySales=(DB.sales||[]).filter(function(s){ return new Date(s.date).toDateString()===todayStr; });
+  var todayTotal=todaySales.reduce(function(a,s){return a+(Number(s.total)||0);},0);
+  var low=(DB.parts||[]).filter(function(p){ return (Number(p.qty)||0)<=(Number(p.reorder)||5); }).length;
+
+  if(ge('h-sales')) ge('h-sales').textContent='Rs. '+todayTotal.toFixed(0);
+  if(ge('h-txns')) ge('h-txns').textContent=todaySales.length;
+  if(ge('h-low')) ge('h-low').textContent=low;
+  if(ge('h-parts')) ge('h-parts').textContent=(DB.parts||[]).length;
+
+  var quick=ge('home-quick');
+  if(quick){
+    var items=[
+      {panel:'pos',ic:'🛒',label:'New Sale'},
+      {panel:'inventory',ic:'📦',label:'Inventory'},
+      {panel:'customers',ic:'👤',label:'Customers'},
+      {panel:'bills',ic:'🧾',label:'Bills'},
+      {panel:'reports',ic:'📊',label:'Reports'},
+      {panel:'vinsearch',ic:'🚗',label:'VIN Search'}
+    ];
+    quick.innerHTML=items.map(function(it){
+      return '<button class="btn bs home-q" data-panel="'+it.panel+'" style="flex-direction:column;padding:18px 8px;gap:6px;font-size:12px">'
+        +'<span style="font-size:24px">'+it.ic+'</span>'+it.label+'</button>';
+    }).join('');
+    quick.querySelectorAll('.home-q').forEach(function(btn){
+      btn.addEventListener('click',function(){ switchPanel(this.getAttribute('data-panel')); });
+    });
+  }
+}
+
+// ===== PIN LOCK SCREEN (local, works fully offline - no cloud dependency) =====
+// Protects the app on startup. PIN is hashed (lightly, not cryptographic-grade -
+// this deters casual walk-up use, it's not meant to stop a determined attacker
+// with device access). Self-service "Forgot PIN" reset avoids any lockout risk.
+var lockState={mode:'unlock',digits:[],firstEntry:null};
+
+function simpleHash(str){
+  str=String(str);
+  var h=5381;
+  for(var i=0;i<str.length;i++){ h=((h*33)^str.charCodeAt(i))>>>0; }
+  return 'h'+h.toString(36);
+}
+
+function initLockScreen(){
+  var hasPin = !!localStorage.getItem('neme_pin_hash');
+  lockState={mode: hasPin?'unlock':'setup', digits:[], firstEntry:null};
+  renderLockUI();
+
+  document.querySelectorAll('.lock-key[data-k]').forEach(function(btn){
+    btn.addEventListener('click',function(){ lockKeyPress(this.getAttribute('data-k')); });
+  });
+  var backBtn=document.getElementById('lock-back');
+  if(backBtn) backBtn.addEventListener('click', lockBackspace);
+  var resetBtn=document.getElementById('lock-reset-btn');
+  if(resetBtn) resetBtn.addEventListener('click', function(){ lockState.digits=[]; renderLockDots(); });
+  var forgot=document.getElementById('lock-forgot');
+  if(forgot) forgot.addEventListener('click', lockForgotPin);
+
+  document.addEventListener('keydown', function(e){
+    if(!document.getElementById('lock-screen') || document.body.classList.contains('unlocked')) return;
+    if(e.key>='0' && e.key<='9') lockKeyPress(e.key);
+    else if(e.key==='Backspace') lockBackspace();
+  });
+}
+
+function renderLockUI(){
+  var title=document.getElementById('lock-title');
+  var note=document.getElementById('lock-setup-note');
+  var err=document.getElementById('lock-err');
+  err.textContent='';
+  if(lockState.mode==='setup'){
+    title.textContent='Create a PIN';
+    note.style.display='block';
+    note.textContent='Choose a 4-digit PIN staff will use to open NEME POS.';
+  }else if(lockState.mode==='confirm'){
+    title.textContent='Confirm PIN';
+    note.style.display='block';
+    note.textContent='Enter the same PIN again to confirm.';
   }else{
-    document.documentElement.setAttribute('data-theme','dark');
+    title.textContent='Enter PIN';
+    note.style.display='none';
+  }
+  renderLockDots();
+}
+
+function renderLockDots(){
+  var dots=document.querySelectorAll('.lock-dot');
+  dots.forEach(function(d,i){ d.className='lock-dot'+(i<lockState.digits.length?' filled':''); });
+}
+
+function lockKeyPress(k){
+  if(lockState.digits.length>=4) return;
+  lockState.digits.push(k);
+  renderLockDots();
+  if(lockState.digits.length===4){
+    setTimeout(lockSubmit, 120); // brief pause so the 4th dot is visible before checking
+  }
+}
+
+function lockBackspace(){
+  lockState.digits.pop();
+  renderLockDots();
+}
+
+function lockErrorShake(msg){
+  var dots=document.querySelectorAll('.lock-dot');
+  dots.forEach(function(d){ d.classList.add('err'); });
+  document.getElementById('lock-err').textContent=msg;
+  var box=document.getElementById('lock-box');
+  box.style.transition='transform .06s';
+  var shakes=[-8,8,-6,6,-3,3,0]; var i=0;
+  (function shake(){ if(i<shakes.length){ box.style.transform='translateX('+shakes[i]+'px)'; i++; setTimeout(shake,45); } else { box.style.transform=''; } })();
+  setTimeout(function(){
+    lockState.digits=[];
+    renderLockDots();
+  }, 420);
+}
+
+function lockSubmit(){
+  var pin=lockState.digits.join('');
+  if(lockState.mode==='setup'){
+    lockState.firstEntry=pin;
+    lockState.mode='confirm';
+    lockState.digits=[];
+    renderLockUI();
+    return;
+  }
+  if(lockState.mode==='confirm'){
+    if(pin===lockState.firstEntry){
+      localStorage.setItem('neme_pin_hash', simpleHash(pin));
+      unlockApp();
+    }else{
+      lockState.mode='setup';
+      lockState.firstEntry=null;
+      lockErrorShake('PINs did not match - try again');
+      setTimeout(renderLockUI, 450);
+    }
+    return;
+  }
+  // unlock mode
+  var stored=localStorage.getItem('neme_pin_hash');
+  if(simpleHash(pin)===stored){
+    unlockApp();
+  }else{
+    lockErrorShake('Incorrect PIN');
+  }
+}
+
+function lockForgotPin(){
+  if(confirm('Reset the PIN?\n\nThis clears the current PIN on this device only - you\'ll set a new one right after. Your shop data (inventory, sales, etc.) is not affected.')){
+    localStorage.removeItem('neme_pin_hash');
+    lockState={mode:'setup',digits:[],firstEntry:null};
+    renderLockUI();
+  }
+}
+
+function unlockApp(){
+  document.body.classList.add('unlocked');
+  try{ renderHome(); }catch(e){ console.warn('renderHome on unlock failed:',e); }
+}
+
+// Lets a signed-in user change their PIN from Settings without needing to "forget" it first.
+function changePin(){
+  var current=prompt('Enter your current PIN to change it:');
+  if(current===null) return;
+  var stored=localStorage.getItem('neme_pin_hash');
+  if(stored && simpleHash(current.trim())!==stored){ toast('Incorrect current PIN','err'); return; }
+  var np=prompt('Enter a new 4-digit PIN:');
+  if(np===null) return;
+  np=np.trim();
+  if(!/^\d{4}$/.test(np)){ toast('PIN must be exactly 4 digits','err'); return; }
+  var confirm2=prompt('Confirm the new PIN:');
+  if(confirm2===null) return;
+  if(confirm2.trim()!==np){ toast('PINs did not match - PIN unchanged','err'); return; }
+  localStorage.setItem('neme_pin_hash', simpleHash(np));
+  toast('✅ PIN changed','ok');
+}
+
+try{ initLockScreen(); }catch(e){ console.error('lock screen init failed:',e); document.body.classList.add('unlocked'); }
+
+// ===== THEME (Gauge Cluster dark is the default identity; light is opt-in) =====
+function toggleTheme(){
+  var isLight=document.documentElement.getAttribute('data-theme')==='light';
+  if(isLight){
+    document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('neme_theme','dark');
+  }else{
+    document.documentElement.setAttribute('data-theme','light');
+    localStorage.setItem('neme_theme','light');
   }
   updateThemeButtonIcon();
 }
 function updateThemeButtonIcon(){
-  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  var isLight=document.documentElement.getAttribute('data-theme')==='light';
   var btn=ge('btn-theme');
   if(btn){
-    btn.innerHTML = isDark ? '&#9728;&#65039;' : '&#127769;'; // sun when dark (tap to go light), moon when light
-    btn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+    btn.innerHTML = isLight ? '&#127769;' : '&#9728;&#65039;'; // moon when light (tap to go dark), sun when dark
+    btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
   }
   var mbtn=document.getElementById('m-theme');
   if(mbtn){
-    mbtn.textContent = isDark ? '☀️' : '🌙';
-    mbtn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+    mbtn.textContent = isLight ? '🌙' : '☀️';
+    mbtn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
   }
+}
+
+// ===== SIGNATURE ELEMENT: dashboard-style gross-margin gauge =====
+// A small speedometer-style semicircle needle gauge for the Gross Profit
+// card - margin % is a natural fit for a "how healthy is this" readout.
+// Zones: red <10% (thin margin), amber 10-20% (ok), green 20%+ (healthy).
+function buildMarginGauge(pct){
+  var p=Math.max(0,Math.min(100,pct));
+  var r=26, cx=30, cy=30;
+  var totalLen=Math.PI*r;
+  var dashOffset=totalLen*(1-p/100);
+  var theta=(180-(p/100*180))*Math.PI/180;
+  var needleR=r*0.78;
+  var nx=(cx+needleR*Math.cos(theta)).toFixed(2);
+  var ny=(cy-needleR*Math.sin(theta)).toFixed(2);
+  var color = p<10 ? '#FF5A5A' : p<20 ? '#FFC145' : '#33D690';
+  return '<svg width="60" height="34" viewBox="0 0 60 32" style="overflow:visible">'
+    +'<path d="M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+(cx+r)+' '+cy+'" fill="none" stroke="var(--brd)" stroke-width="4" stroke-linecap="round"/>'
+    +'<path d="M '+(cx-r)+' '+cy+' A '+r+' '+r+' 0 0 1 '+(cx+r)+' '+cy+'" fill="none" stroke="'+color+'" stroke-width="4" stroke-linecap="round" '
+    +'stroke-dasharray="'+totalLen.toFixed(2)+'" stroke-dashoffset="'+dashOffset.toFixed(2)+'"/>'
+    +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nx+'" y2="'+ny+'" stroke="'+color+'" stroke-width="2" stroke-linecap="round"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="2.5" fill="'+color+'"/>'
+    +'</svg>';
 }
 
 function openPartSouqVin(vin){
@@ -6510,9 +6805,9 @@ function dedupeParts(){
 (function(){
   var css=document.createElement('style');
   css.textContent=
-  '#mapp{--mink:#1B2530;--mpaper:#F5F6F8;--mcard:#fff;--mmut:#66727F;--mnavy:#16222E;--mamber:#F2A50C;--mgrn:#1F9D55;--mred:#D64545;--mbrd:#E3E7EC;'
+  '#mapp{--mink:#ECEEF3;--mpaper:#14171B;--mcard:#1B1F24;--mmut:#8B93A0;--mnavy:#0A0C0F;--mamber:#FF5A36;--mgrn:#33D690;--mred:#FF5A5A;--mbrd:#33393F;'
   +'display:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--mpaper);color:var(--mink);min-height:100vh}'
-  +'[data-theme="dark"] #mapp{--mink:#ECEEF0;--mpaper:#14161A;--mcard:#1C1F24;--mmut:#8F96A0;--mnavy:#0D0F12;--mamber:#E0A83A;--mgrn:#4CB87A;--mred:#E0654A;--mbrd:#333940}'
+  +'[data-theme="light"] #mapp{--mink:#171A1E;--mpaper:#EDEFF2;--mcard:#fff;--mmut:#6B7280;--mnavy:#171A1E;--mamber:#E8451F;--mgrn:#16915A;--mred:#D64545;--mbrd:#D3D7DC}'
   +'body.mobile-mode{background:var(--mpaper,#F5F6F8);display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
   +'html.mobile-mode-html{height:auto!important;overflow:auto!important}'
   +'body.mobile-mode > :not(#mapp):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(script):not(style){display:none!important}'
@@ -6613,7 +6908,7 @@ function initMobileMode(){
   app.id='mapp';
   app.innerHTML=
    '<div id="m-head"><div id="m-title">🔧 NEME AUTO</div><div id="m-sub">Live shop view</div>'
-   +'<button id="m-theme" onclick="toggleTheme()" title="Toggle dark mode">'+(document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙')+'</button>'
+   +'<button id="m-theme" onclick="toggleTheme()" title="Toggle theme">'+(document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️')+'</button>'
    +'<button id="m-desk" onclick="sessionStorage.setItem(\'neme_force_desktop\',\'1\');location.reload()">🖥️ Desktop</button></div>'
    +'<div id="m-main">'
    +'<div id="m-page-inv">'
