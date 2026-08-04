@@ -219,8 +219,6 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="tnav" data-panel="pricelist">&#128176; Price List</button>
     <button class="tnav" data-panel="reports">&#128202; Reports</button>
     <button class="tnav" data-panel="vinsearch">&#128663; VIN Search</button>
-    <button class="tnav" data-panel="partsref">&#128269; Parts Reference</button>
-    <button class="tnav" data-panel="partref">&#128269; Parts Reference</button>
   </div>
   <div class="topbar-r">
     <button class="apikey-btn" id="btn-theme" title="Toggle dark mode">&#127769;</button>
@@ -466,36 +464,6 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
         </div>
         <div style="margin-top:18px;background:var(--sur2);border-radius:6px;padding:12px;font-size:11.5px;color:var(--mut);line-height:1.7">
           ⚠️ This opens PartSouq.com in a new tab to search - it's a convenience shortcut, not data pulled into NEME POS. PartSouq's own catalog, pricing and availability apply.
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="panel" id="panel-partsref">
-  <div class="ph">
-    <div class="pt">&#128269; Parts Reference</div>
-  </div>
-  <div class="pb">
-    <div style="max-width:760px;margin:0 auto">
-      <div class="tw" style="padding:24px">
-        <div style="text-align:center;margin-bottom:18px">
-          <div style="font-size:38px;margin-bottom:8px">🔍</div>
-          <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700">Find cross-reference &amp; equivalent part numbers</div>
-          <div class="muted" style="font-size:12.5px;margin-top:6px;line-height:1.6">Type a part number, brand + code, or a description. AI searches the web and suggests OEM codes, brand equivalents, and cross-references.</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <input id="pref-input" placeholder="e.g. EXEDY NSC 527, or &quot;brake pad Toyota Corolla 2015&quot;" style="flex:1" autocomplete="off">
-          <button class="btn bp" id="btn-pref-search" style="white-space:nowrap">🔍 Search</button>
-        </div>
-        <div id="pref-status" style="font-size:12px;color:var(--mut);margin-top:8px;min-height:16px"></div>
-        <div id="pref-results" style="margin-top:14px"></div>
-        <div style="margin-top:18px;border-top:1px solid var(--brd);padding-top:16px">
-          <div style="font-weight:700;font-size:12.5px;color:var(--mut);margin-bottom:8px">RECENT SEARCHES</div>
-          <div id="pref-recent-list" style="display:flex;flex-direction:column;gap:6px"></div>
-        </div>
-        <div style="margin-top:18px;background:var(--sur2);border-radius:6px;padding:12px;font-size:11.5px;color:var(--mut);line-height:1.7">
-          ⚠️ AI-assisted results - always double-check a suggested part number against the actual product or your supplier before ordering. Results marked "🌐 Web-verified" were checked against live search; "🧠 AI knowledge" results were not and may be outdated.
         </div>
       </div>
     </div>
@@ -2105,7 +2073,7 @@ function switchPanel(id){
   ge('panel-'+id).classList.add('active');
   var nb=document.querySelector('.tnav[data-panel="'+id+'"]');
   if(nb)nb.classList.add('active');
-  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel,home:renderHome,partsref:initPartsRefPanel};
+  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel,home:renderHome};
   if(fn[id])fn[id]();
 }
 
@@ -3995,202 +3963,6 @@ function initVinSearchPanel(){
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter' && !btn.disabled) btn.click(); });
   btn.addEventListener('click',function(){ openPartSouqVin(inp.value); });
   renderVinRecent();
-}
-
-/* ============================================================
-   🔍 PARTS REFERENCE (AI web search for cross-reference part numbers)
-   Uses the same Gemini key already configured for invoice scanning.
-   Enables Google Search grounding so the model checks live web results
-   instead of only its training data. Falls back to a plain (ungrounded)
-   answer if grounding isn't supported on the available model, and is
-   always upfront in the UI about which kind of answer you're looking at.
-   ============================================================ */
-function initPartsRefPanel(){
-  var inp=ge('pref-input'), btn=ge('btn-pref-search');
-  if(!inp || inp._wired){ renderPrefRecent(); return; }
-  inp._wired=true;
-  inp.addEventListener('keydown',function(e){ if(e.key==='Enter') runPartsRefSearch(); });
-  btn.addEventListener('click', runPartsRefSearch);
-  renderPrefRecent();
-}
-
-function runPartsRefSearch(){
-  var q=(ge('pref-input').value||'').trim();
-  if(!q){ toast('Type a part number or description first','err'); return; }
-  searchPartsReference(q);
-}
-
-function savePrefToRecent(q){
-  try{
-    var list=JSON.parse(localStorage.getItem('neme_pref_recent')||'[]');
-    list=list.filter(function(v){ return v!==q; });
-    list.unshift(q);
-    list=list.slice(0,10);
-    localStorage.setItem('neme_pref_recent', JSON.stringify(list));
-  }catch(e){}
-  renderPrefRecent();
-}
-
-function renderPrefRecent(){
-  var el=ge('pref-recent-list');
-  if(!el) return;
-  var list=[];
-  try{ list=JSON.parse(localStorage.getItem('neme_pref_recent')||'[]'); }catch(e){}
-  if(!list.length){ el.innerHTML='<div class="muted" style="font-size:12px">No searches yet</div>'; return; }
-  el.innerHTML=list.map(function(q){
-    return '<div style="display:flex;align-items:center;gap:8px;background:var(--sur2);border-radius:6px;padding:8px 10px">'
-      +'<span style="font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+q.replace(/</g,'&lt;')+'</span>'
-      +'<button class="btn bs bsm pref-recent-search" data-q="'+q.replace(/"/g,'&quot;')+'">🔍 Search</button>'
-      +'</div>';
-  }).join('');
-  el.querySelectorAll('.pref-recent-search').forEach(function(b){
-    b.addEventListener('click',function(){ ge('pref-input').value=this.getAttribute('data-q'); searchPartsReference(this.getAttribute('data-q')); });
-  });
-}
-
-async function searchPartsReference(query){
-  var apiKey=getGeminiApiKey();
-  if(!apiKey) return;
-  var status=ge('pref-status'), results=ge('pref-results'), btn=ge('btn-pref-search');
-  status.textContent='🌐 Searching the web...';
-  results.innerHTML='';
-  btn.disabled=true;
-
-  var prompt='You are a spare-parts cross-reference assistant for an auto parts shop. '
-    +'Search the web for the part / code: "'+query+'".\n'
-    +'Find: the OEM part number, the brand and part number as given, and 3-6 known equivalent/cross-reference part numbers from other brands that fit the same application.\n'
-    +'Respond with ONLY this JSON object, no markdown, no commentary:\n'
-    +'{"summary":"one sentence describing what this part is","matches":[{"partNo":"...","brand":"...","type":"OEM or Aftermarket or Cross-reference","notes":"short note e.g. vehicle fitment"}]}\n'
-    +'If you cannot find reliable information, return {"summary":"No reliable matches found","matches":[]}.';
-
-  var body={
-    contents:[{ parts:[{ text: prompt }] }],
-    tools:[{ google_search: {} }],
-    generationConfig:{ temperature:0.2, maxOutputTokens:2048 }
-  };
-
-  var models=['gemini-flash-latest','gemini-3-flash','gemini-2.5-flash'];
-  var lastErr='', grounded=false, sources=[], text='';
-
-  for(var m=0;m<models.length;m++){
-    var url='https://generativelanguage.googleapis.com/v1beta/models/'+models[m]+':generateContent?key='+encodeURIComponent(apiKey);
-    try{
-      status.textContent='🌐 Searching with '+models[m]+'...';
-      var resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!resp.ok){
-        var errTxt=await resp.text();
-        lastErr='HTTP '+resp.status;
-        try{ var ej=JSON.parse(errTxt); if(ej.error&&ej.error.message) lastErr+=': '+ej.error.message; }catch(e){}
-        if(resp.status===400 && errTxt.indexOf('API_KEY_INVALID')!==-1){
-          localStorage.removeItem('neme_gemini_api_key');
-          status.textContent='';
-          toast('❌ Invalid Gemini key - removed. Search again to re-enter.','err');
-          btn.disabled=false;
-          return;
-        }
-        if(resp.status===404){ continue; } // model unavailable, try next
-        // grounding tool may not be supported on this model - retry once without it
-        if(body.tools){
-          console.warn('Grounded request failed on '+models[m]+', retrying ungrounded:', lastErr);
-          var bodyNoTools=JSON.parse(JSON.stringify(body)); delete bodyNoTools.tools;
-          var resp2=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodyNoTools)});
-          if(resp2.ok){
-            var data2=await resp2.json();
-            text=extractGeminiText(data2);
-            grounded=false;
-            break;
-          }
-        }
-        continue;
-      }
-      var data=await resp.json();
-      text=extractGeminiText(data);
-      var cand=(data.candidates&&data.candidates[0])||{};
-      var gm=cand.groundingMetadata||cand.grounding_metadata;
-      if(gm){
-        grounded=true;
-        var chunks=gm.groundingChunks||gm.grounding_chunks||[];
-        chunks.forEach(function(c){
-          var w=c.web||c;
-          if(w && w.uri) sources.push({title:w.title||w.uri, uri:w.uri});
-        });
-      }
-      break;
-    }catch(e){
-      lastErr=e.message;
-      console.error('Parts reference search error on '+models[m]+':', e);
-    }
-  }
-
-  btn.disabled=false;
-  status.textContent='';
-
-  if(!text){
-    status.innerHTML='<span style="color:#FF5A5A">❌ Search failed'+(lastErr?' - '+lastErr:'')+'. Try again in a moment.</span>';
-    return;
-  }
-
-  var parsed=null;
-  try{
-    var clean=text.replace(/```json|```/g,'').trim();
-    var s=clean.indexOf('{'), e=clean.lastIndexOf('}')+1;
-    if(s!==-1 && e>s) parsed=JSON.parse(clean.substring(s,e));
-  }catch(err){ console.warn('Could not parse structured result, showing raw text'); }
-
-  renderPrefResults(query, parsed, text, grounded, sources);
-  savePrefToRecent(query);
-}
-
-function extractGeminiText(data){
-  var cand=(data.candidates&&data.candidates[0])||null;
-  if(!cand||!cand.content||!cand.content.parts) return '';
-  return cand.content.parts.map(function(p){ return p.text||''; }).join('');
-}
-
-function renderPrefResults(query, parsed, rawText, grounded, sources){
-  var results=ge('pref-results');
-  var badge=grounded
-    ? '<span style="background:#1F9D55;color:#fff;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px">🌐 Web-verified</span>'
-    : '<span style="background:var(--yel);color:#171a1e;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px">🧠 AI knowledge - not web-verified</span>';
-
-  if(!parsed){
-    results.innerHTML='<div class="tw" style="padding:16px">'
-      +'<div style="margin-bottom:10px">'+badge+'</div>'
-      +'<div style="font-size:13px;white-space:pre-wrap;line-height:1.6">'+rawText.replace(/</g,'&lt;')+'</div></div>';
-    return;
-  }
-
-  var matches=parsed.matches||[];
-  var h='<div class="tw" style="padding:16px;margin-bottom:12px">'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><b style="font-family:\'Rajdhani\',sans-serif;font-size:15px">"'+query.replace(/</g,'&lt;')+'"</b>'+badge+'</div>'
-    +'<div style="font-size:13px;color:var(--mut)">'+(parsed.summary||'').replace(/</g,'&lt;')+'</div></div>';
-
-  if(matches.length){
-    h+='<div style="display:flex;flex-direction:column;gap:8px">';
-    matches.forEach(function(mm){
-      var typeColor = mm.type==='OEM' ? '#33D690' : mm.type==='Cross-reference' ? '#3FA9F5' : '#FFC145';
-      h+='<div class="tw" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">'
-        +'<div style="min-width:0">'
-        +'<div style="font-family:\'DM Mono\',monospace;font-weight:700;font-size:14px">'+String(mm.partNo||'-').replace(/</g,'&lt;')+'</div>'
-        +'<div style="font-size:12px;color:var(--mut);margin-top:2px">'+String(mm.brand||'').replace(/</g,'&lt;')+(mm.notes?' · '+String(mm.notes).replace(/</g,'&lt;'):'')+'</div>'
-        +'</div>'
-        +'<span style="background:'+typeColor+'22;color:'+typeColor+';font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap">'+(mm.type||'')+'</span>'
-        +'<button class="btn bs bsm" style="white-space:nowrap" onclick="navigator.clipboard.writeText(\''+String(mm.partNo||'').replace(/'/g,"\\'")+'\');toast(\'Copied\',\'ok\')">📋 Copy</button>'
-        +'</div>';
-    });
-    h+='</div>';
-  } else {
-    h+='<div class="tw" style="padding:16px;text-align:center;color:var(--mut);font-size:13px">No matches found for this search.</div>';
-  }
-
-  if(sources.length){
-    h+='<div style="margin-top:14px"><div style="font-weight:700;font-size:11.5px;color:var(--mut);margin-bottom:6px">SOURCES</div>'
-      +sources.slice(0,5).map(function(s){
-        return '<div style="font-size:11.5px;margin-bottom:4px"><a href="'+s.uri+'" target="_blank" rel="noopener" style="color:var(--blu)">'+String(s.title).replace(/</g,'&lt;')+'</a></div>';
-      }).join('')+'</div>';
-  }
-
-  results.innerHTML=h;
 }
 
 
