@@ -227,6 +227,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="tnav" data-panel="pricelist">&#128176; Price List</button>
     <button class="tnav" data-panel="reports">&#128202; Reports</button>
     <button class="tnav" data-panel="vinsearch">&#128663; VIN Search</button>
+    <button class="tnav" data-panel="staff" id="tnav-staff" style="display:none">&#128101; Staff</button>
   </div>
   <div class="topbar-r">
     <span id="user-badge" style="font-size:12px;color:#9FB0BF"></span>
@@ -482,6 +483,22 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   </div>
 </div>
 
+<div class="panel" id="panel-staff">
+  <div class="ph">
+    <div class="pt">&#128101; Staff Accounts</div>
+  </div>
+  <div class="pb">
+    <div style="max-width:600px;margin:0 auto">
+      <div class="tw" style="padding:20px">
+        <p style="font-size:12.5px;color:var(--mut);margin-bottom:14px;line-height:1.6">
+          Each staff member signs in with their own username and password. Add a login here for anyone who uses the till or phone - accounts sync between your PC and phone automatically.
+        </p>
+        <div id="staff-manage-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <!-- MODALS -->
@@ -594,14 +611,6 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <p style="font-size:11px;color:#2e7d32;margin:0;line-height:1.5">
       Invoice scanning is powered by Claude AI — reads even handwritten part numbers. Takes 15-30 seconds per invoice.
     </p>
-  </div>
-  
-  <div style="background:var(--sur2);padding:14px;border-radius:4px;margin-bottom:16px">
-    <div style="font-weight:600;margin-bottom:10px">👥 Staff Accounts</div>
-    <p style="font-size:12px;color:var(--mut);margin-bottom:10px;line-height:1.6">
-      Each staff member signs in with their own username and password. Works fully offline once an account exists on this device. Accounts sync between your PC and phone like the rest of your data.
-    </p>
-    <div id="staff-manage-box"></div>
   </div>
   
   <div style="background:var(--sur2);padding:14px;border-radius:4px;margin-bottom:16px;border:1px solid var(--acc)">
@@ -2089,13 +2098,14 @@ function switchPanel(id){
   ge('panel-'+id).classList.add('active');
   var nb=document.querySelector('.tnav[data-panel="'+id+'"]');
   if(nb)nb.classList.add('active');
-  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel,home:renderHome};
+  var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,invoices:initInvPanel,reports:renderReports,vinsearch:initVinSearchPanel,home:renderHome,staff:renderStaffManageList};
   if(fn[id])fn[id]();
 }
 
 // Re-render whatever panel is on screen (used after cloud sync pulls changes)
 function refreshActivePanel(){
   try{
+    if(!document.body.classList.contains('unlocked')) return; // don't render real data before login
     if(document.body.classList.contains('mobile-mode')){ if(typeof mRender==='function') mRender(); return; }
     var id = window._activePanel || 'home';
     var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports,home:renderHome};
@@ -3831,6 +3841,9 @@ function loginErrorShake(msg){
 
 function loginUser(user){
   window._currentUser={id:user.id, username:user.username, displayName:user.displayName, role:user.role};
+  var staffTab=ge('tnav-staff');
+  if(staffTab) staffTab.style.display = (user.role==='owner') ? '' : 'none';
+  try{ switchPanel('home'); }catch(e){ console.warn('switchPanel(home) on login failed:',e); } // always land fresh, never on a stale/restricted panel
   unlockApp();
   updateUserBadge();
 }
@@ -3868,6 +3881,7 @@ function unlockApp(){
   document.body.classList.add('unlocked');
   try{ renderHome(); }catch(e){ console.warn('renderHome on unlock failed:',e); }
   try{ updateUserBadge(); }catch(e){}
+  try{ if(document.body.classList.contains('mobile-mode') && typeof mRender==='function') mRender(); }catch(e){ console.warn('mobile render on unlock failed:',e); }
 }
 
 // ===== STAFF MANAGEMENT (Settings - owner only) =====
@@ -4064,7 +4078,6 @@ function showApiKeyPrompt(){
   ge('gemini-api-inp').value=localStorage.getItem('neme_gemini_api_key')||'';
   ge('gcv-api-inp').value=localStorage.getItem('gcv_api_key')||'';
   ge('apikey-inp').value=localStorage.getItem('neme_api_key')||'';
-  try{ renderStaffManageList(); }catch(e){ console.warn('staff list render failed:',e); }
   openOv('apikey-ov');
 }
 function saveApiKey(){
@@ -7119,8 +7132,8 @@ function dedupeParts(){
   +'[data-theme="light"] #mapp{--mink:#171A1E;--mpaper:#EDEFF2;--mcard:#fff;--mmut:#6B7280;--mnavy:#171A1E;--mamber:#E8451F;--mgrn:#16915A;--mred:#D64545;--mbrd:#D3D7DC}'
   +'body.mobile-mode{background:var(--mpaper,#F5F6F8);display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
   +'html.mobile-mode-html{height:auto!important;overflow:auto!important}'
-  +'body.mobile-mode > :not(#mapp):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(script):not(style){display:none!important}'
-  +'body.mobile-mode #mapp{display:block}'
+  +'body.mobile-mode > :not(#mapp):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(#lock-screen):not(script):not(style){display:none!important}'
+  +'body.mobile-mode.unlocked #mapp{display:block}'
   +'#mapp *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}'
   +'#m-head{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--mnavy);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px}'
   +'#m-head:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:repeating-linear-gradient(-45deg,var(--mamber) 0 10px,var(--mnavy) 10px 20px)}'
@@ -7266,7 +7279,11 @@ function initMobileMode(){
    +'<div id="m-bscan-hint">Point camera at the barcode</div>'
    +'<div id="m-bscan-result"></div></div>';
   document.body.appendChild(app);
-  mRender();
+  // Do NOT render real shop data here - the skeleton is safe to build (no
+  // numbers in it), but actual inventory/sales figures should only populate
+  // once the person has successfully logged in. unlockApp() calls mRender()
+  // once that happens (mirrors how desktop only renders Home after login).
+  if(document.body.classList.contains('unlocked')) mRender();
 }
 
 function mGo(tab){
