@@ -2108,7 +2108,7 @@ function refreshActivePanel(){
     if(!document.body.classList.contains('unlocked')) return; // don't render real data before login
     if(document.body.classList.contains('mobile-mode')){ if(typeof mRender==='function') mRender(); return; }
     var id = window._activePanel || 'home';
-    var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports,home:renderHome};
+    var fn={pos:function(){renderCats();renderProds();renderCustDrop();},inventory:renderInv,customers:function(){renderCustList();renderCustDrop();},suppliers:function(){renderSupTable();renderPOTable();},bills:renderBills,pricelist:renderPriceList,reports:renderReports,home:renderHome,staff:renderStaffManageList};
     if(fn[id])fn[id]();
   }catch(e){console.warn('refresh error',e);}
 }
@@ -3742,11 +3742,13 @@ async function initLoginScreen(){
   form.addEventListener('submit', function(e){ e.preventDefault(); submitLoginForm(); });
   ge('lock-forgot').addEventListener('click', resetAllAccounts);
 
-  // Give a brief window for cloud sync to pull existing staff accounts
-  // before deciding "fresh install" vs "login" - avoids accidentally
-  // showing Create Owner Account on a second device that just hasn't synced yet.
+  // By the time this runs, loadDB() has already populated DB.staffUsers from
+  // local storage - so for any device that's been used before, this check is
+  // immediate and correct. This wait only matters for a genuinely brand-new
+  // device with no local data yet, giving cloud sync a moment to pull down
+  // accounts that already exist on the shop's other devices.
   var waited=0;
-  while((!DB.staffUsers || DB.staffUsers.length===0) && waited<2000){
+  while((!DB.staffUsers || DB.staffUsers.length===0) && waited<3000){
     await new Promise(function(r){ setTimeout(r,250); });
     waited+=250;
   }
@@ -3807,6 +3809,15 @@ async function submitLoginForm(){
   var password=ge('lock-password').value;
 
   if(loginState.mode==='create-owner'){
+    // Safety net: if accounts already exist by the time this is submitted
+    // (e.g. a slow cloud sync caught up while the form was open), never
+    // create a second owner - send them to Sign In instead.
+    if(DB.staffUsers && DB.staffUsers.length>0){
+      loginState.mode='login';
+      renderLoginUI();
+      err.textContent='Accounts were found for this shop - please sign in below.';
+      return;
+    }
     var displayName=ge('lock-displayname').value.trim();
     var password2=ge('lock-password2').value;
     if(!displayName){ err.textContent='Enter your name'; return; }
@@ -3853,8 +3864,7 @@ function updateUserBadge(){
   if(!u) return;
   var badge=ge('user-badge');
   if(badge) badge.textContent='👤 '+u.displayName+(u.role==='owner'?' (Owner)':'');
-  var mbadge=document.getElementById('m-user-badge');
-  if(mbadge) mbadge.textContent='👤 '+u.displayName;
+  if(document.body.classList.contains('mobile-mode') && typeof mRender==='function') mRender(); // refreshes mobile subtitle with the user's name
 }
 
 function logoutUser(){
@@ -3946,7 +3956,9 @@ function toggleStaffUserActive(id){
   renderStaffManageList();
 }
 
-try{ initLoginScreen(); }catch(e){ console.error('login screen init failed:',e); document.body.classList.add('unlocked'); }
+// initLoginScreen() is called after loadDB() completes (see DOMContentLoaded
+// handler below) - this guarantees local account data is already in memory
+// before the login screen decides whether to show "Sign In" or "Create Owner".
 
 // ===== THEME (Gauge Cluster dark is the default identity; light is opt-in) =====
 function toggleTheme(){
@@ -4225,6 +4237,7 @@ document.addEventListener('DOMContentLoaded',function(){
     dz.addEventListener('drop',function(e){e.preventDefault();this.style.borderColor='';if(e.dataTransfer.files[0])handleInvFile(e.dataTransfer.files[0]);});
   }
   loadDB();
+  try{ initLoginScreen(); }catch(e){ console.error('login screen init failed:',e); document.body.classList.add('unlocked'); }
   scheduleAutoBackup();  // NEW: Auto-backup on startup
   try{renderCats();}catch(e){console.error('boot renderCats:',e);}
   try{renderProds();}catch(e){console.error('boot renderProds:',e);}
@@ -7310,7 +7323,10 @@ function mRender(){
   else if(window._mTab==='prices') mRenderPrices(true);
   else mRenderReports();
   var sub=document.getElementById('m-sub');
-  if(sub) sub.textContent=(DB.parts||[]).length+' parts · '+(DB.sales||[]).length+' bills';
+  if(sub){
+    var who=window._currentUser?('👤 '+window._currentUser.displayName+' · '):'';
+    sub.textContent=who+(DB.parts||[]).length+' parts · '+(DB.sales||[]).length+' bills';
+  }
 }
 
 function mRenderReports(){
