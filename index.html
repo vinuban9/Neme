@@ -1709,6 +1709,15 @@ function getNextBillNo(){
   // Pad to at least 2 digits: 01, 02 ... 99, 100, 101...
   return DB.billSeq<10?'0'+DB.billSeq:String(DB.billSeq);
 }
+// Default accounts so the shop never needs a first-run "Create Owner" step -
+// sign in immediately with these, and change passwords anytime from the
+// 👥 Staff page. Hashes are real SHA-256 of the passwords below (Owner:
+// vinuban12, Staff: 123456) - not stored as plain text anywhere.
+var DEFAULT_STAFF_USERS = [
+  {id:'U_OWNER_DEFAULT', username:'vinuban', displayName:'Vinuban', passwordHash:'01e7ace56a2bd69bcd17a9d17061f37acd8194066309fe82aa7e9fda005be39e', role:'owner', active:true, createdAt:new Date().toISOString()},
+  {id:'U_STAFF_DEFAULT', username:'Dhushnath', displayName:'Dhushnath', passwordHash:'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', role:'staff', active:true, createdAt:new Date().toISOString()}
+];
+
 function loadDB(){
   try{
     var d=localStorage.getItem('neme_v1');
@@ -1731,7 +1740,7 @@ function loadDB(){
   if(!DB.customerStats)DB.customerStats={};
   if(!DB.priceHistory)DB.priceHistory=[];
   if(!DB.returns)DB.returns=[];
-  if(!DB.staffUsers)DB.staffUsers=[];
+  if(!DB.staffUsers||!DB.staffUsers.length)DB.staffUsers=DEFAULT_STAFF_USERS;
   if(!DB.settings)DB.settings={shopName:'NUWARA ELIYA MOTOR ENTERPRISE',shopAddress:'No. 30, Kandy Road, Nuwara Eliya',shopPhone:'077 601 5097 / 075 511 0912 / 052 222 3099',defaultCustomer:'',roundingEnabled:true};
   if(!DB.purchaseOrders)DB.purchaseOrders=[];
   if(!DB.invoices)DB.invoices=[];
@@ -3743,14 +3752,28 @@ async function initLoginScreen(){
   ge('lock-forgot').addEventListener('click', resetAllAccounts);
 
   // By the time this runs, loadDB() has already populated DB.staffUsers from
-  // local storage - so for any device that's been used before, this check is
-  // immediate and correct. This wait only matters for a genuinely brand-new
-  // device with no local data yet, giving cloud sync a moment to pull down
-  // accounts that already exist on the shop's other devices.
-  var waited=0;
-  while((!DB.staffUsers || DB.staffUsers.length===0) && waited<3000){
-    await new Promise(function(r){ setTimeout(r,250); });
-    waited+=250;
+  // local storage - so for any device that's been used before, this is
+  // immediate and correct with no waiting at all.
+  //
+  // This wait ONLY matters for a genuinely brand-new device with no local
+  // data yet: it needs cloud sync to load Firebase, sign in, and pull the
+  // first snapshot before we can trust "no accounts" as genuinely true.
+  // That full chain can take several seconds on a real connection, so this
+  // waits for the actual fbSync.ready signal (not a guessed delay), with a
+  // generous ceiling in case sync never connects (e.g. no internet) - in
+  // which case local data (already loaded) is what we go with regardless.
+  if(!DB.staffUsers || DB.staffUsers.length===0){
+    var titleEl=ge('lock-title');
+    var waited=0, maxWait=9000;
+    while((!DB.staffUsers || DB.staffUsers.length===0) && !fbSync.ready && waited<maxWait){
+      if(titleEl) titleEl.textContent='Checking for existing accounts\u2026 ('+Math.ceil((maxWait-waited)/1000)+'s)';
+      await new Promise(function(r){ setTimeout(r,300); });
+      waited+=300;
+    }
+    // If we hit the ceiling WITHOUT sync ever confirming (fbSync.ready still
+    // false), we genuinely don't know whether accounts exist elsewhere or
+    // this really is a fresh device - flag that honestly on the next screen.
+    window._loginSyncUncertain = (!DB.staffUsers || DB.staffUsers.length===0) && !fbSync.ready;
   }
   loginState.mode = (DB.staffUsers && DB.staffUsers.length>0) ? 'login' : 'create-owner';
   renderLoginUI();
