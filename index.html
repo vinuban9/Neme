@@ -313,6 +313,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="btn bs bsm" onclick="document.getElementById('invoice-upload-input').click()" title="Upload invoice">📄 Invoice</button>
     <button class="btn bs bsm" onclick="document.getElementById('invoice-csv-input').click()" title="Import invoice CSV from the free extractor">📋 Invoice CSV</button>
     <button class="btn bs bsm" onclick="fixBrokenSKUs()" title="Renumber any products that have a wrong SKU">🔧 Fix SKUs</button>
+    <button class="btn bs bsm" onclick="dedupeParts()" title="Merge products that appear more than once (e.g. after syncing multiple devices)">🧹 Remove Duplicates</button>
     <button class="btn bp bsm" id="btn-add-part">+ Add Part</button>
     <input type="file" id="import-excel-input" accept=".xlsx,.xls,.csv" onchange="importInventoryExcel(event)" style="display:none">
     <input type="file" id="invoice-upload-input" accept=".jpg,.jpeg,.png,.pdf" onchange="handleInvoiceUpload(event)" style="display:none">
@@ -6888,7 +6889,7 @@ var fbSync = {
     var self=this;
     this.setStatus('☁️ Syncing…','#66727F');
     var pending=this.COLS.length+1;
-    function armed(){ pending--; if(pending===0){ self.ready=true; self.setStatus('☁️ Synced','#1F9D55'); self.schedulePush(); } }
+    function armed(){ pending--; if(pending===0){ self.ready=true; self.setStatus('☁️ Synced','#1F9D55'); self.schedulePush(); autoCheckDuplicatesAfterSync(); } }
 
     this.COLS.forEach(function(col){
       self.shadow[col]=self.shadow[col]||{};
@@ -7073,6 +7074,40 @@ function saveFirebaseConfig(){
 // 🧹 One-click cleanup: remove duplicate parts created by the seed-data sync bug.
 // Keeps the "real" copy of each duplicate (the one used in sales / with barcode
 // or description), removes the rest locally AND from the cloud (via sync).
+// Runs once sync fully catches up on this device. Quietly checks for
+// duplicate parts (the same product synced in from multiple devices before
+// they'd merged) and, only if it actually finds any, shows a small dismissible
+// prompt to clean them up in one tap - instead of this being a manual chore
+// someone has to remember. Detection only; the merge itself still needs a tap,
+// since it changes inventory data and deserves a visible confirmation.
+function autoCheckDuplicatesAfterSync(){
+  setTimeout(function(){
+    try{
+      if(document.getElementById('dup-check-ov')) return; // already showing
+      function normKey(p){
+        var n=String(p.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        if(n) return 'N:'+n;
+        var s=String(p.sku||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        return 'S:'+s;
+      }
+      var groups={};
+      (DB.parts||[]).forEach(function(p){ var k=normKey(p); (groups[k]=groups[k]||[]).push(p); });
+      var dupGroups=Object.values(groups).filter(function(g){ return g.length>1; });
+      if(!dupGroups.length) return;
+      var extraCount=dupGroups.reduce(function(a,g){ return a+g.length-1; },0);
+
+      var el=document.createElement('div');
+      el.id='dup-check-ov';
+      el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#16222E;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.35);display:flex;align-items:center;gap:12px;max-width:92vw';
+      el.innerHTML='<div style="font-size:13px">🧹 Found '+extraCount+' duplicate part'+(extraCount===1?'':'s')+' after syncing</div>'
+        +'<button style="background:#FF5A36;color:#fff;border:none;border-radius:9px;padding:8px 12px;font-weight:700;font-size:12px;white-space:nowrap" onclick="dedupeParts();document.getElementById(\'dup-check-ov\').remove()">Clean Up</button>'
+        +'<button style="background:transparent;color:#9FB0BF;border:none;font-size:18px;padding:0 4px" onclick="document.getElementById(\'dup-check-ov\').remove()">✕</button>';
+      document.body.appendChild(el);
+      setTimeout(function(){ var e2=document.getElementById('dup-check-ov'); if(e2) e2.remove(); }, 20000);
+    }catch(e){ console.warn('auto dup check failed:',e); }
+  }, 2500); // brief settle time after sync marks ready, so any final writes land first
+}
+
 function dedupeParts(){
   var salesPids={};
   (DB.sales||[]).forEach(function(s){ (s.items||[]).forEach(function(it){ if(it.pid) salesPids[String(it.pid)]=1; }); });
