@@ -392,6 +392,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
       <button class="btn bs bsm dbt-tab" data-dbtab="debtors">&#128100; Debtors</button>
       <button class="btn bs bsm dbt-tab" data-dbtab="sales">&#129534; Credit Sales</button>
+      <button class="btn bs bsm dbt-tab" data-dbtab="estates">&#127981; Estates</button>
       <button class="btn bs bsm dbt-tab" data-dbtab="history">&#128184; Collections</button>
       <input id="dbt-search" placeholder="Search name / phone..." style="margin-left:auto;min-width:180px;max-width:260px">
       <select id="dbt-sort" style="width:auto"><option value="bal">Highest balance</option><option value="age">Oldest due</option><option value="name">Name A-Z</option></select>
@@ -635,6 +636,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div class="fg" id="co-cash-grp"><label>Amount Tendered</label><input id="co-tend" type="number" step="0.01" placeholder="0.00"></div>
     <div id="co-chg-row" style="display:none;background:#eafaf2;border-radius:4px;padding:10px;justify-content:space-between;align-items:center"><span style="font-weight:600">Change</span><span class="mono" id="co-chg" style="font-size:16px;color:var(--grn);font-weight:700">$0.00</span></div>
     <div class="fg"><label>Note</label><input id="co-note" placeholder="Optional..."></div>
+    <div class="fg"><label>PO / Order Ref (estates, credit bills)</label><input id="co-poref" placeholder="e.g. PO-2291"></div>
   </div>
   <div class="ma"><button class="btn bs" data-close="co-ov">Cancel</button><button class="btn bs" id="btn-complete-noprint">&#10003; Save (No Print)</button><button class="btn bg" id="btn-complete-sale">&#128424; Save &amp; Print</button></div>
 </div></div>
@@ -647,7 +649,9 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div class="fg"><label>Phone</label><input id="c-ph"></div>
     <div class="fg"><label>Email</label><input id="c-em"></div>
     <div class="fg full"><label>Address</label><input id="c-addr"></div>
-    <div class="fg"><label>Type</label><select id="c-type"><option>Walk-in</option><option>Account</option><option>Workshop</option><option>Dealer</option></select></div>
+    <div class="fg"><label>Type</label><select id="c-type"><option>Walk-in</option><option>Account</option><option>Workshop</option><option>Dealer</option><option>Estate</option></select></div>
+    <div class="fg"><label>Contact Person (estates)</label><input id="c-contact" placeholder="e.g. Estate manager / storekeeper"></div>
+    <div class="fg"><label>Credit Terms</label><select id="c-terms"><option value="0">Due immediately</option><option value="7">7 days</option><option value="15">15 days</option><option value="30" selected>30 days</option><option value="45">45 days</option><option value="60">60 days</option><option value="90">90 days</option></select></div>
     <div class="fg"><label>Credit Limit</label><input id="c-cr" type="number" placeholder="0"></div>
     <div class="fg full"><label>Notes</label><textarea id="c-notes" rows="2"></textarea></div>
   </div>
@@ -2740,6 +2744,7 @@ function openCheckout(){
     if(coChgRow) coChgRow.style.display='none';
     if(coCashGrp) coCashGrp.style.display='flex';
     if(coMethod) coMethod.value='Cash';
+    if(ge('co-poref')) ge('co-poref').value='';
     
     console.log('✅ Opening checkout menu with total: Rs.'+t.tot);
     openOv('co-ov');
@@ -2801,7 +2806,7 @@ function completeSale(doPrint){
           cart.forEach(function(item){var p=DB.parts.find(function(x){return x.id===item.pid;});if(p)p.qty=Math.max(0,p.qty-item.qty);});
           var sale={id:'SA'+Date.now(),billNo:billNo,date:new Date().toISOString(),customer:cn,custId:cid,
             items:cart.map(function(i){return{pid:i.pid,name:i.name,qty:i.qty,price:i.price,cost:i.cost};}),
-            sub:t.sub,tax:t.tax,disc:t.disc,da:t.da,total:t.tot,pay:ge('co-method').value,note:ge('co-note').value,printed:!!doPrint,vehicle:vehSel().label,vehId:vehSel().id,processedBy:window._currentUser?window._currentUser.displayName:'Unknown'};
+            sub:t.sub,tax:t.tax,disc:t.disc,da:t.da,total:t.tot,pay:ge('co-method').value,note:ge('co-note').value,printed:!!doPrint,vehicle:vehSel().label,vehId:vehSel().id,poRef:(ge('co-poref')?ge('co-poref').value.trim():''),due:(ge('co-method').value==='Credit (Account)'?crAddDays(crToday(),(function(){var cc=dbtCust(cid);return cc&&cc.terms!=null?cc.terms:30;})()):''),processedBy:window._currentUser?window._currentUser.displayName:'Unknown'};
           DB.sales.push(sale);
           try{logAudit('sale',{bill:billNo,customer:cn,total:t.tot,discount:t.da>0?t.da:0,pay:sale.pay,items:cart.length});}catch(e){}
           if(window._loadedQuoteId){var lq=qtFind(window._loadedQuoteId);if(lq){lq.status='Sold';lq.billNo=billNo;}window._loadedQuoteId=null;}
@@ -2862,6 +2867,8 @@ function printReceipt(s){
     +'<div style="font-size:11px">'+new Date(s.date).toLocaleString()+'</div>'
     +'<div style="font-size:11px">Customer: '+s.customer+'</div>'
     +(s.vehicle?'<div style="font-size:11px">Vehicle: '+s.vehicle+'</div>':'')
+    +(s.poRef?'<div style="font-size:11px">PO Ref: '+s.poRef+'</div>':'')
+    +(s.due?'<div style="font-size:11px">Due: '+s.due+'</div>':'')
     +'<div style="font-size:11px">Payment: '+s.pay+'</div>'
     +line
     +itemRows
@@ -2900,6 +2907,7 @@ function buildReceiptText(s){
   lines.push(new Date(s.date).toLocaleString());
   lines.push('Customer: '+(s.customer||'Walk-in'));
   if(s.vehicle)lines.push('Vehicle: '+s.vehicle);
+  if(s.poRef)lines.push('PO Ref: '+s.poRef);
   lines.push('----------------------------');
   (s.items||[]).forEach(function(i){
     lines.push(i.name);
@@ -3194,16 +3202,17 @@ function deleteCustomer(id){
 }
 function openCustModal(idx){
   editCust=idx;
-  if(idx===-1){ge('cust-title').textContent='Add Customer';['c-fn','c-ln','c-ph','c-em','c-addr','c-notes'].forEach(function(id){ge(id).value='';});ge('c-type').selectedIndex=0;ge('c-cr').value=0;}
-  else{var c=DB.customers[idx];ge('cust-title').textContent='Edit Customer';ge('c-fn').value=c.fn;ge('c-ln').value=c.ln;ge('c-ph').value=c.phone||'';ge('c-em').value=c.email||'';ge('c-addr').value=c.addr||'';ge('c-type').value=c.type;ge('c-cr').value=c.credit||0;ge('c-notes').value=c.notes||'';}
+  if(idx===-1){ge('cust-title').textContent='Add Customer';['c-fn','c-ln','c-ph','c-em','c-addr','c-notes'].forEach(function(id){ge(id).value='';});ge('c-type').selectedIndex=0;ge('c-cr').value=0;ge('c-contact').value='';ge('c-terms').value='30';}
+  else{var c=DB.customers[idx];ge('cust-title').textContent='Edit Customer';ge('c-fn').value=c.fn;ge('c-ln').value=c.ln;ge('c-ph').value=c.phone||'';ge('c-em').value=c.email||'';ge('c-addr').value=c.addr||'';ge('c-type').value=c.type;ge('c-cr').value=c.credit||0;ge('c-notes').value=c.notes||'';ge('c-contact').value=c.contact||'';ge('c-terms').value=String(c.terms==null?30:c.terms);}
   openOv('cust-ov');
 }
 function saveCust(){
   var fn=ge('c-fn').value.trim(),ln=ge('c-ln').value.trim();
+  if(!ln&&ge('c-type').value==='Estate')ln='Estate';
   if(!fn||!ln){toast('Name required','err');return;}
   var c={id:editCust===-1?'C'+Date.now():DB.customers[editCust].id,fn:fn,ln:ln,
     phone:ge('c-ph').value.trim(),email:ge('c-em').value.trim(),addr:ge('c-addr').value.trim(),
-    type:ge('c-type').value,credit:parseFloat(ge('c-cr').value)||0,notes:ge('c-notes').value.trim(),balance:0,vehicles:[]};
+    type:ge('c-type').value,credit:parseFloat(ge('c-cr').value)||0,notes:ge('c-notes').value.trim(),balance:0,vehicles:[],contact:ge('c-contact').value.trim(),terms:parseInt(ge('c-terms').value,10)};
   if(editCust!==-1){var oldC=DB.customers[editCust];c=Object.assign({},oldC,c,{balance:Number(oldC.balance)||0,vehicles:oldC.vehicles||[]});}
   try{logAudit(editCust===-1?'customer_added':'customer_edited',{customer:fn+' '+ln});}catch(e){}
   if(editCust===-1)DB.customers.push(c);else DB.customers[editCust]=c;
@@ -8364,8 +8373,8 @@ function dbtDay(iso){return String(iso||'').slice(0,10);}
 // so the unpaid portion is made of the NEWEST credit entries.
 function dbtEntries(cid){
   var out=[];
-  (DB.sales||[]).forEach(function(s){if(String(s.custId)===String(cid)&&s.pay==='Credit (Account)')out.push({kind:'sale',date:dbtDay(s.date),amount:Number(s.total)||0,ref:s.billNo||s.id,id:s.id,sale:s});});
-  dbtSet().forEach(function(x){if(String(x.custId)===String(cid)&&x.type==='charge')out.push({kind:'charge',date:dbtDay(x.date),amount:Number(x.amount)||0,ref:x.note||'Old due',id:x.id});});
+  (DB.sales||[]).forEach(function(s){if(String(s.custId)===String(cid)&&s.pay==='Credit (Account)')out.push({kind:'sale',date:dbtDay(s.date),amount:Number(s.total)||0,ref:s.billNo||s.id,id:s.id,sale:s,poRef:s.poRef||'',due:s.due||''});});
+  dbtSet().forEach(function(x){if(String(x.custId)===String(cid)&&x.type==='charge')out.push({kind:'charge',date:dbtDay(x.date),amount:Number(x.amount)||0,ref:x.note||'Old due',id:x.id,poRef:'',due:''});});
   return out.sort(function(a,b){return b.date.localeCompare(a.date);});
 }
 function dbtSaleOf(id){return (DB.sales||[]).find(function(x){return String(x.id)===String(id);});}
@@ -8405,9 +8414,9 @@ function renderDebtors(){
   ge('dbt-kpis').innerHTML=kpi('Total Owed To Me',tot,tot>0?'var(--blu)':'')+kpi('Debtors',list.length,'',false)+kpi('Older than 30 days',old30amt,old30amt>0?'#ff5a5a':'')+kpi('Over Credit Limit',over,over>0?'#ff5a5a':'',false)+kpi('Collected this month',coll,'var(--grn)');
   ge('dbt-alert').innerHTML=old30?'<div style="background:rgba(255,90,90,.12);border:1px solid #ff5a5a;border-radius:6px;padding:9px 12px;margin-bottom:12px;font-size:13px">&#9888;&#65039; <strong>'+old30+' customer'+(old30>1?'s have':' has')+'</strong> owed money for over 30 days ('+fmt(old30amt)+'). Send a reminder.</div>':'';
   document.querySelectorAll('.dbt-tab').forEach(function(b){var on=b.getAttribute('data-dbtab')===DBT.tab;b.classList.toggle('bp',on);b.classList.toggle('bs',!on);});
-  ge('dbt-sort').style.display=DBT.tab==='debtors'?'':'none';
+  ge('dbt-sort').style.display=(DBT.tab==='debtors'||DBT.tab==='estates')?'':'none';
   var q=(ge('dbt-search').value||'').trim().toLowerCase();
-  ge('dbt-body').innerHTML=DBT.tab==='debtors'?dbtViewDebtors(q):DBT.tab==='sales'?dbtViewSales(q):dbtViewHistory(q);
+  ge('dbt-body').innerHTML=DBT.tab==='debtors'?dbtViewDebtors(q):DBT.tab==='sales'?dbtViewSales(q):DBT.tab==='estates'?dbtViewEstates(q):dbtViewHistory(q);
 }
 function dbtAgePill(a){
   if(!a)return '<span class="muted">-</span>';
@@ -8436,9 +8445,9 @@ function dbtViewSales(q){
     dbtUnpaid(c).forEach(function(u){rows.push({c:c,u:u});});});
   rows.sort(function(a,b){return a.u.e.date.localeCompare(b.u.e.date);});
   if(!rows.length)return '<div class="muted" style="padding:30px;text-align:center">No unpaid credit sales.</div>';
-  var h='<div class="muted" style="font-size:12px;margin-bottom:8px">Unpaid credit bills, oldest first. Payments are assumed to clear the oldest bills first.</div><div class="tw"><table><thead><tr><th>Date</th><th>Bill Details</th><th>Customer</th><th>Bill Total</th><th>Still Unpaid</th><th>Age</th></tr></thead><tbody>';
+  var h='<div class="muted" style="font-size:12px;margin-bottom:8px">Unpaid credit bills, oldest first. Payments are assumed to clear the oldest bills first.</div><div class="tw"><table><thead><tr><th>Date</th><th>Bill Details</th><th>PO Ref</th><th>Due</th><th>Customer</th><th>Bill Total</th><th>Still Unpaid</th><th>Age</th></tr></thead><tbody>';
   rows.forEach(function(r){var a=r.u.e.date?Math.max(0,crDaysBetween(crToday(),r.u.e.date)):0;
-    h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.u.e.date)+'</td><td style="font-size:11px"><span class="mono">'+crEsc(r.u.e.ref)+'</span>'+dbtBillDetail(r.u.e.sale,false)+'</td><td style="font-weight:600">'+crEsc(dbtName(r.c))+'</td><td class="price">'+fmt(r.u.e.amount)+'</td><td class="price" style="font-weight:700">'+fmt(r.u.unpaid)+(r.u.unpaid<r.u.e.amount-0.005?' <span class="muted" style="font-size:10px">(part)</span>':'')+'</td><td>'+dbtAgePill(a)+'</td></tr>';});
+    h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.u.e.date)+'</td><td style="font-size:11px"><span class="mono">'+crEsc(r.u.e.ref)+'</span> '+(r.u.e.sale?'<button class="btn bs bsm" data-dbact="invoice" data-sid="'+crEsc(r.u.e.id)+'" style="padding:0 6px" title="Print invoice">&#128424;</button>':'')+dbtBillDetail(r.u.e.sale,false)+'</td><td class="mono" style="font-size:11px">'+crEsc(r.u.e.poRef||'-')+'</td><td class="mono" style="font-size:11px">'+crEsc(dbtDue(r.u.e,r.c)||'-')+(dbtIsLate(r.u.e,r.c)?'<div style="color:#ff5a5a">overdue</div>':'')+'</td><td style="font-weight:600">'+crEsc(dbtName(r.c))+(r.c.type==="Estate"?' <span class="pill" style="border:1px solid var(--blu);color:var(--blu)">Estate</span>':'')+'</td><td class="price">'+fmt(r.u.e.amount)+'</td><td class="price" style="font-weight:700">'+fmt(r.u.unpaid)+(r.u.unpaid<r.u.e.amount-0.005?' <span class="muted" style="font-size:10px">(part)</span>':'')+'</td><td>'+dbtAgePill(a)+'</td></tr>';});
   return h+'</tbody></table></div>';
 }
 function dbtViewHistory(q){
@@ -8584,7 +8593,7 @@ document.addEventListener('DOMContentLoaded',function(){
   document.addEventListener('click',function(e){
     var t=e.target.closest&&e.target.closest('[data-dbact]');if(!t)return;
     var a=t.getAttribute('data-dbact'),cid=t.getAttribute('data-cid');
-    if(a==='pay')openDbtPay(cid);else if(a==='ledger')dbtShowLedger(cid);else if(a==='remind')dbtRemind(cid);else if(a==='editpay')dbtEditEntry(t.getAttribute('data-sid'));else if(a==='delpay')dbtDeleteEntry(t.getAttribute('data-sid'));
+    if(a==='pay')openDbtPay(cid);else if(a==='ledger')dbtShowLedger(cid);else if(a==='remind')dbtRemind(cid);else if(a==='invoice')dbtPrintInvoice(t.getAttribute('data-sid'));else if(a==='estatement')dbtStatementForm(cid);else if(a==='editpay')dbtEditEntry(t.getAttribute('data-sid'));else if(a==='delpay')dbtDeleteEntry(t.getAttribute('data-sid'));
   });
 });
 </script>
@@ -9057,6 +9066,61 @@ document.addEventListener('DOMContentLoaded',function(){
   // free the localStorage space the old daily copies were hogging
   try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('neme_auto_backup_')===0)localStorage.removeItem(k);});}catch(e){}
 });
+
+
+// ---------------- ESTATES (credit customers with PO refs, terms and statements) ----------------
+function dbtTerms(c){return (c&&c.terms!=null)?Number(c.terms):30;}
+function dbtDue(e,c){return e.due||(e.date?crAddDays(e.date,dbtTerms(c)):'');}
+function dbtIsLate(e,c){var d=dbtDue(e,c);return !!d&&d<crToday();}
+function dbtOverdueAmt(c){return dbtUnpaid(c).reduce(function(a,u){return a+(dbtIsLate(u.e,c)?u.unpaid:0);},0);}
+function dbtViewEstates(q){
+  var sort=ge('dbt-sort').value;
+  var rows=(DB.customers||[]).filter(function(c){return c.type==='Estate'&&(!q||(dbtName(c)+' '+(c.contact||'')+' '+(c.phone||'')).toLowerCase().indexOf(q)>=0);});
+  rows.forEach(function(c){c._od=dbtOverdueAmt(c);c._age=dbtAge(c);});
+  rows.sort(function(a,b){return sort==='name'?dbtName(a).localeCompare(dbtName(b)):sort==='age'?b._age-a._age:(Number(b.balance)||0)-(Number(a.balance)||0);});
+  var tb=0,to=0;rows.forEach(function(c){tb+=Number(c.balance)||0;to+=c._od;});
+  var h='<div class="muted" style="font-size:12px;margin-bottom:8px">Estates you supply on credit. Add an estate in <strong>Customers</strong> with type <strong>Estate</strong> (set its credit terms and contact). At checkout choose <strong>Credit (Account)</strong> and enter the estate\'s <strong>PO / Order Ref</strong>.</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div style="background:var(--sur);border:1px solid var(--brd);border-radius:6px;padding:10px 14px"><div style="font-size:18px;font-weight:700;font-family:Rajdhani,sans-serif">'+fmt(tb)+'</div><div class="muted" style="font-size:11px">Estates owe you</div></div>'
+    +'<div style="background:var(--sur);border:1px solid var(--brd);border-radius:6px;padding:10px 14px"><div style="font-size:18px;font-weight:700;font-family:Rajdhani,sans-serif;color:'+(to>0?'#ff5a5a':'inherit')+'">'+fmt(to)+'</div><div class="muted" style="font-size:11px">Past due date</div></div></div>';
+  if(!rows.length)return h+'<div class="muted" style="padding:30px;text-align:center">No estates yet. Go to Customers → Add Customer → Type: Estate.</div>';
+  h+='<div class="tw"><table><thead><tr><th>Estate</th><th>Contact</th><th>Terms</th><th>Owes</th><th>Past Due</th><th>Oldest Unpaid</th><th>Last Payment</th><th></th></tr></thead><tbody>';
+  rows.forEach(function(c){var bal=Number(c.balance)||0,lim=Number(c.credit)||0;
+    h+='<tr><td style="font-weight:600">'+crEsc(dbtName(c))+(lim&&bal>lim?' <span style="color:#ff5a5a;font-size:11px">&#9888; over limit</span>':'')+'</td><td>'+crEsc(c.contact||'-')+'<div class="mono" style="font-size:11px">'+crEsc(c.phone||'')+'</div></td><td>'+dbtTerms(c)+' days</td>'
+      +'<td class="price" style="font-weight:700;color:'+(bal>0?'#ff5a5a':'inherit')+'">'+fmt(bal)+'</td><td class="price" style="color:'+(c._od>0?'#ff5a5a':'inherit')+'">'+(c._od>0?fmt(c._od):'-')+'</td><td>'+dbtAgePill(c._age)+'</td><td class="mono" style="font-size:11px">'+(dbtLastPay(c.id)||'-')+'</td>'
+      +'<td style="white-space:nowrap">'+(bal>0?'<button class="btn bp bsm" data-dbact="pay" data-cid="'+crEsc(c.id)+'">Collect</button> ':'')+'<button class="btn bs bsm" data-dbact="estatement" data-cid="'+crEsc(c.id)+'">&#128196; Statement</button> <button class="btn bs bsm" data-dbact="ledger" data-cid="'+crEsc(c.id)+'">Ledger</button> <button class="btn bs bsm" data-dbact="remind" data-cid="'+crEsc(c.id)+'">&#128172;</button></td></tr>';});
+  return h+'</tbody></table></div>';
+}
+function dbtStatementForm(cid){
+  var c=dbtCust(cid);if(!c)return;var d=new Date(),y=d.getFullYear(),m=d.getMonth();
+  var first=y+'-'+String(m+1).padStart(2,'0')+'-01';
+  upForm('Statement for '+dbtName(c),[{id:'from',label:'From',type:'date',value:first},{id:'to',label:'To',type:'date',value:crToday()}],function(v){dbtPrintStatementRange(cid,v.from,v.to);});
+}
+function dbtPrintStatementRange(cid,from,to){
+  var c=dbtCust(cid);if(!c)return;from=from||'0000-00-00';to=to||'9999-99-99';var sh=upShop();
+  var all=dbtLedgerRows(cid),open=0;
+  all.forEach(function(r){if(r.date<from)open+=r.debit-r.credit;});open=Math.max(0,open);
+  var rows=all.filter(function(r){return r.date>=from&&r.date<=to;}),run=open,ch=0,pd=0,body='';
+  rows.forEach(function(r){run+=r.debit-r.credit;ch+=r.debit;pd+=r.credit;
+    var det='<strong>'+upEsc(r.desc)+'</strong>'+(r.sale&&r.sale.poRef?' &nbsp;<em>PO: '+upEsc(r.sale.poRef)+'</em>':'')+(r.sale&&r.sale.vehicle?' &nbsp;<em>Vehicle: '+upEsc(r.sale.vehicle)+'</em>':'')+(r.sale?'<div style="font-size:11px">'+r.sale.items.map(function(i){return upEsc(i.name)+' ×'+i.qty+' @ '+fmt(i.price);}).join('; ')+'</div>':'');
+    body+='<tr><td>'+upEsc(r.date)+'</td><td>'+det+'</td><td class="r">'+(r.debit?fmt(r.debit):'')+'</td><td class="r">'+(r.credit?fmt(r.credit):'')+'</td><td class="r">'+fmt(Math.max(0,run))+'</td></tr>';});
+  var closing=Math.max(0,run);
+  upPrint('Statement — '+dbtName(c),'<div style="text-align:center"><div style="font-size:20px;font-weight:bold">'+upEsc(sh.name)+'</div><div>'+upEsc(sh.addr)+'</div><div>'+upEsc(sh.phone)+'</div></div><h2 style="text-align:center;margin:12px 0 2px">STATEMENT OF ACCOUNT</h2>'
+    +'<div><strong>'+upEsc(dbtName(c))+'</strong>'+(c.contact?' — Attn: '+upEsc(c.contact):'')+(c.addr?'<br>'+upEsc(c.addr):'')+(c.phone?'<br>Tel: '+upEsc(c.phone):'')+'<br>Period: '+upEsc(from.replace('0000-00-00','start'))+' to '+upEsc(to.replace('9999-99-99','today'))+' · Credit terms: '+dbtTerms(c)+' days</div>'
+    +'<table><thead><tr><th>Date</th><th>Details</th><th class="r">Charged</th><th class="r">Paid</th><th class="r">Balance</th></tr></thead><tbody><tr><td colspan="4"><em>Opening balance</em></td><td class="r">'+fmt(open)+'</td></tr>'+body
+    +'<tr><th colspan="2" class="r">Totals</th><th class="r">'+fmt(ch)+'</th><th class="r">'+fmt(pd)+'</th><th class="r">'+fmt(closing)+'</th></tr></tbody></table>'
+    +'<p><strong>Total outstanding now: '+fmt(c.balance)+'</strong>'+(Math.abs(closing-(Number(c.balance)||0))>0.5?' <span style="font-size:11px">(includes balances recorded before the period or outside this POS)</span>':'')+'</p><p style="font-size:12px">Please settle within the agreed credit terms. Cheques payable to '+upEsc(sh.name)+'.</p>');
+}
+function dbtPrintInvoice(entryId){
+  var e=null,c=null;(DB.customers||[]).some(function(cc){return dbtEntries(cc.id).some(function(x){if(x.id===entryId){e=x;c=cc;return true;}});});
+  if(!e||!e.sale)return;var s=e.sale,sh=upShop();
+  var rows=s.items.map(function(i,n){return '<tr><td>'+(n+1)+'</td><td>'+upEsc(i.name)+'</td><td class="r">'+i.qty+'</td><td class="r">'+fmt(i.price)+'</td><td class="r">'+fmt(i.qty*i.price)+'</td></tr>';}).join('');
+  upPrint('Invoice '+(s.billNo||s.id),'<div style="text-align:center"><div style="font-size:20px;font-weight:bold">'+upEsc(sh.name)+'</div><div>'+upEsc(sh.addr)+'</div><div>'+upEsc(sh.phone)+'</div></div><h2 style="text-align:center;margin:12px 0 2px">INVOICE (CREDIT)</h2>'
+    +'<table style="border:none"><tr><td style="border:none"><strong>Invoice No:</strong> '+upEsc(s.billNo||s.id)+'<br><strong>Date:</strong> '+upEsc(String(s.date).slice(0,10))+'<br><strong>Due date:</strong> '+upEsc(dbtDue(e,c))+(s.poRef?'<br><strong>PO / Order Ref:</strong> '+upEsc(s.poRef):'')+'</td>'
+    +'<td style="border:none"><strong>Bill to:</strong> '+upEsc(dbtName(c))+(c.contact?'<br>Attn: '+upEsc(c.contact):'')+(c.addr?'<br>'+upEsc(c.addr):'')+(c.phone?'<br>Tel: '+upEsc(c.phone):'')+(s.vehicle?'<br><strong>Vehicle:</strong> '+upEsc(s.vehicle):'')+'</td></tr></table>'
+    +'<table><thead><tr><th>#</th><th>Description</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead><tbody>'+rows
+    +(s.da>0?'<tr><td colspan="4" class="r">Subtotal</td><td class="r">'+fmt(s.sub)+'</td></tr><tr><td colspan="4" class="r">Discount</td><td class="r">-'+fmt(s.da)+'</td></tr>':'')+'<tr><th colspan="4" class="r">TOTAL DUE</th><th class="r">'+fmt(s.total)+'</th></tr></tbody></table>'
+    +'<p style="font-size:12px">Payment terms: '+dbtTerms(c)+' days. Goods received in good condition.</p><br><br><div style="display:flex;justify-content:space-between"><div>______________________<br>Received by (name / signature / date)</div><div>______________________<br>For '+upEsc(sh.name)+'</div></div>');
+}
 
 // keep the vehicle picker in step with the customer picker
 (function(){var _rcd=renderCustDrop;renderCustDrop=function(){var r=_rcd.apply(this,arguments);try{vehRefresh();}catch(e){}return r;};})();
