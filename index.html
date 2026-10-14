@@ -684,17 +684,36 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div class="ma"><button class="btn bs" id="dbl-print">&#128424; Statement</button><button class="btn bs" id="dbl-remind">&#128172; Remind</button><button class="btn bp" id="dbl-pay">&#128179; Collect</button><button class="btn bs" data-close="dbtled-ov">Close</button></div>
 </div></div>
 
-<div class="overlay" id="qt-ov"><div class="modal">
+<div class="overlay" id="qt-ov"><div class="modal" style="max-width:820px;width:96%">
   <div class="mt" id="qtm-title">&#128196; Save Quotation</div>
   <div class="fgrid">
-    <div class="fg full"><label>Customer Name (you can change it)</label><input id="qtm-cust" placeholder="Customer name"></div>
+    <div class="fg full"><label>Customer Name</label><input id="qtm-cust" placeholder="Customer name"></div>
     <div class="fg"><label>Phone</label><input id="qtm-phone" placeholder="optional"></div>
     <div class="fg"><label>Vehicle</label><input id="qtm-veh" placeholder="optional"></div>
+    <div class="fg"><label>Quote Date</label><input id="qtm-date" type="date"></div>
     <div class="fg"><label>Valid until</label><input id="qtm-until" type="date"></div>
-    <div class="fg"><label>Quote Total</label><input id="qtm-total" readonly></div>
+  </div>
+  <div style="font-family:Rajdhani,sans-serif;font-weight:700;margin:10px 0 4px">Items</div>
+  <div style="border:1px solid var(--brd);border-radius:4px;max-height:30vh;overflow:auto"><table style="width:100%"><thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Amount</th><th></th></tr></thead><tbody id="qtm-items"></tbody></table></div>
+  <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap">
+    <input id="qtm-add" list="qtm-parts" placeholder="Type a product to add from inventory..." style="flex:1;min-width:200px"><datalist id="qtm-parts"></datalist>
+    <button class="btn bs bsm" id="qtm-add-btn">+ Add item</button>
+    <button class="btn bs bsm" id="qtm-add-custom">+ Custom line</button>
+  </div>
+  <div class="fgrid">
+    <div class="fg"><label>Subtotal</label><input id="qtm-sub" readonly></div>
+    <div class="fg"><label>Discount %</label><input id="qtm-disc" type="number" min="0" max="100" step="0.01" value="0"></div>
+    <div class="fg"><label>Total (you can type your own)</label><input id="qtm-total" type="number" step="0.01"></div>
+    <div class="fg"><label>Status</label><select id="qtm-status"><option>Open</option><option>Sold</option><option>Declined</option></select></div>
     <div class="fg full"><label>Note (shown on quote)</label><input id="qtm-note" placeholder="e.g. Genuine parts, 3-month warranty"></div>
   </div>
   <div class="ma"><button class="btn bs" data-close="qt-ov">Cancel</button><button class="btn bp" id="qtm-save">Save Quote</button></div>
+</div></div>
+
+<div class="overlay" id="ed-ov"><div class="modal">
+  <div class="mt" id="ed-title"></div>
+  <div class="fgrid" id="ed-fields"></div>
+  <div class="ma"><button class="btn bs" data-close="ed-ov">Cancel</button><button class="btn bp" id="ed-save">Save</button></div>
 </div></div>
 
 <div class="overlay" id="veh-ov"><div class="modal">
@@ -8075,7 +8094,7 @@ function crViewPayments(q){
   var h='<div class="tw"><table><thead><tr><th>Date</th><th>Supplier</th><th>Bill Ref</th><th>Method</th><th>Note</th><th>By</th><th>Amount</th><th></th></tr></thead><tbody>';
   list.forEach(function(x){tot+=Number(x.p.amount)||0;
     h+='<tr><td class="mono" style="font-size:11px">'+crEsc(x.p.date)+'</td><td style="font-weight:600">'+crEsc(crSupName(x.b.supId,x.b.supplier))+'</td><td class="mono" style="font-size:11px">'+crEsc(x.b.ref||'-')+'</td><td>'+crEsc(x.p.method||'-')+'</td><td>'+crEsc(x.p.note||'')+'</td><td>'+crEsc(x.p.by||'')+'</td><td class="price">'+fmt(x.p.amount)+'</td>'
-      +'<td><button class="btn bd bsm" data-cract="delpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Undo this payment">&#8630;</button></td></tr>';});
+      +'<td style="white-space:nowrap"><button class="btn bs bsm" data-cract="editpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Edit this payment">&#9999;&#65039;</button> <button class="btn bd bsm" data-cract="delpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Undo this payment">&#8630;</button></td></tr>';});
   return h+'<tr style="font-weight:700;background:var(--sur2)"><td colspan="6">TOTAL PAID</td><td class="price">'+fmt(tot)+'</td><td></td></tr></tbody></table></div>';
 }
 function crViewCustomers(q){
@@ -8202,6 +8221,16 @@ function crDeletePayment(billId,payId){
   });
 }
 
+function crEditPayment(billId,payId){
+  var b=crBills().find(function(x){return x.id===billId;});if(!b)return;var p=(b.payments||[]).find(function(x){return x.id===payId;});if(!p)return;
+  upForm('Edit payment to '+crSupName(b.supId,b.supplier),[{id:'date',label:'Date',type:'date',value:p.date},{id:'amount',label:'Amount (Rs.)',type:'number',value:Number(p.amount).toFixed(2)},{id:'method',label:'Method',options:['Cash','Bank Transfer','Cheque','Card','Other'],value:p.method||'Cash'},{id:'note',label:'Note / Cheque no.',value:p.note||''}],function(v){
+    var amt=Math.round((parseFloat(v.amount)||0)*100)/100;if(!(amt>0)){toast('Enter a valid amount','err');return false;}
+    var others=crPaid(b)-(Number(p.amount)||0);if(others+amt>(Number(b.amount)||0)+0.005){toast('Payments would exceed the bill amount ('+fmt(b.amount)+')','err');return false;}
+    var old=p.amount;p.amount=amt;p.date=v.date||p.date;p.method=v.method;p.note=(v.note||'').trim();
+    crSaveAudit('creditor_payment',{supplier:crSupName(b.supId,b.supplier),edited:true,amount:old===amt?amt:(old+' -> '+amt)});
+    saveDB();renderCreditors();if(ge('crdet-ov').classList.contains('open'))crShowLedger(CR.supId);toast('✅ Payment updated','ok');});
+}
+
 // ----- Ledger / statement -----
 function crShowLedger(supId,name){
   CR.supId=supId||null;
@@ -8215,7 +8244,7 @@ function crShowLedger(supId,name){
   bills.forEach(function(b){
     h+='<div style="border:1px solid var(--brd);border-radius:6px;padding:10px;margin-bottom:8px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>'+crEsc(b.ref||'(no ref)')+'</strong> '+crPill(crStatus(b))+'<span class="muted" style="font-size:11px">'+crEsc(b.date||'')+' · due '+crEsc(b.due||'-')+'</span><span style="margin-left:auto" class="price">'+fmt(b.amount)+' · bal <strong>'+fmt(crBal(b))+'</strong></span></div>'
       +(b.note?'<div class="muted" style="font-size:12px">'+crEsc(b.note)+'</div>':'')
-      +((b.payments||[]).length?'<div style="margin-top:6px;font-size:12px">'+b.payments.map(function(p){return '<div style="display:flex;gap:8px;padding:2px 0;border-top:1px dashed var(--brd)"><span class="mono">'+crEsc(p.date)+'</span><span>'+crEsc(p.method||'')+'</span><span class="muted">'+crEsc(p.note||'')+'</span><span style="margin-left:auto">'+fmt(p.amount)+'</span><button class="btn bd bsm" data-cract="delpay" data-bid="'+b.id+'" data-pid="'+p.id+'" style="padding:0 6px">&#8630;</button></div>';}).join('')+'</div>':'')
+      +((b.payments||[]).length?'<div style="margin-top:6px;font-size:12px">'+b.payments.map(function(p){return '<div style="display:flex;gap:8px;padding:2px 0;border-top:1px dashed var(--brd)"><span class="mono">'+crEsc(p.date)+'</span><span>'+crEsc(p.method||'')+'</span><span class="muted">'+crEsc(p.note||'')+'</span><span style="margin-left:auto">'+fmt(p.amount)+'</span><button class="btn bs bsm" data-cract="editpay" data-bid="'+b.id+'" data-pid="'+p.id+'" style="padding:0 6px">&#9999;&#65039;</button><button class="btn bd bsm" data-cract="delpay" data-bid="'+b.id+'" data-pid="'+p.id+'" style="padding:0 6px">&#8630;</button></div>';}).join('')+'</div>':'')
       +'<div style="margin-top:6px;display:flex;gap:6px">'+(crBal(b)>0?'<button class="btn bp bsm" data-cract="paybill" data-bid="'+b.id+'">Pay</button>':'')+'<button class="btn bs bsm" data-cract="editbill" data-bid="'+b.id+'">Edit</button><button class="btn bd bsm" data-cract="delbill" data-bid="'+b.id+'">Delete</button></div></div>';
   });
   ge('crd-body').innerHTML=h;
@@ -8316,6 +8345,7 @@ document.addEventListener('DOMContentLoaded',function(){
     else if(a==='editbill'){closeOv('crdet-ov');openCrBill(bid);}
     else if(a==='delbill')crDeleteBill(bid);
     else if(a==='delpay')crDeletePayment(bid,t.getAttribute('data-pid'));
+    else if(a==='editpay')crEditPayment(bid,t.getAttribute('data-pid'));
     else if(a==='settlecust'){settleCustomerDues(t.getAttribute('data-cid'));setTimeout(renderCreditors,50);}
     else if(a==='remindcust')crRemindCustomer(t.getAttribute('data-cid'));
   });
@@ -8412,12 +8442,39 @@ function dbtViewSales(q){
   return h+'</tbody></table></div>';
 }
 function dbtViewHistory(q){
-  var list=dbtSet().filter(function(x){return x.type!=='charge'&&(!q||(String(x.customer||'')+' '+(x.note||'')).toLowerCase().indexOf(q)>=0);}).sort(function(a,b){return String(b.date).localeCompare(String(a.date));});
+  var list=dbtSet().filter(function(x){return !q||(String(x.customer||'')+' '+(x.note||'')).toLowerCase().indexOf(q)>=0;}).sort(function(a,b){return String(b.date).localeCompare(String(a.date));});
   if(!list.length)return '<div class="muted" style="padding:30px;text-align:center">No collections recorded yet.</div>';
   var t=0;
-  var h='<div class="tw"><table><thead><tr><th>Date</th><th>Customer</th><th>Method</th><th>Note</th><th>By</th><th>Amount</th><th>Balance After</th></tr></thead><tbody>';
-  list.forEach(function(x){t+=Number(x.amount)||0;h+='<tr><td class="mono" style="font-size:11px">'+crEsc(dbtDay(x.date))+'</td><td style="font-weight:600">'+crEsc(x.customer||'')+'</td><td>'+crEsc(x.method||'-')+'</td><td>'+crEsc(x.note||'')+'</td><td>'+crEsc(x.by||'')+'</td><td class="price">'+fmt(x.amount)+'</td><td class="price">'+(x.balanceAfter==null?'-':fmt(x.balanceAfter))+'</td></tr>';});
-  return h+'<tr style="font-weight:700;background:var(--sur2)"><td colspan="5">TOTAL COLLECTED</td><td class="price">'+fmt(t)+'</td><td></td></tr></tbody></table></div>';
+  var h='<div class="tw"><table><thead><tr><th>Date</th><th>Customer</th><th>Type</th><th>Method</th><th>Note</th><th>By</th><th>Amount</th><th></th></tr></thead><tbody>';
+  list.forEach(function(x){var ch=x.type==='charge';if(!ch)t+=Number(x.amount)||0;
+    h+='<tr><td class="mono" style="font-size:11px">'+crEsc(dbtDay(x.date))+'</td><td style="font-weight:600">'+crEsc(x.customer||'')+'</td><td>'+(ch?'<span style="color:#ff5a5a">Old due</span>':'<span style="color:var(--grn)">Payment</span>')+'</td><td>'+crEsc(x.method||'-')+'</td><td>'+crEsc(x.note||'')+'</td><td>'+crEsc(x.by||'')+'</td><td class="price">'+fmt(x.amount)+'</td>'
+      +'<td style="white-space:nowrap"><button class="btn bs bsm" data-dbact="editpay" data-sid="'+crEsc(x.id)+'" title="Edit">✏️</button> <button class="btn bd bsm" data-dbact="delpay" data-sid="'+crEsc(x.id)+'" title="Delete / undo">✕</button></td></tr>';});
+  return h+'<tr style="font-weight:700;background:var(--sur2)"><td colspan="6">TOTAL COLLECTED</td><td class="price">'+fmt(t)+'</td><td></td></tr></tbody></table></div>';
+}
+function dbtEditEntry(sid){
+  if(!isOwnerUser()){toast('🔒 Only the owner can edit payment records','err');return;}
+  var x=dbtSet().find(function(e){return e.id===sid;});if(!x)return;var c=dbtCust(x.custId);if(!c){toast('Customer no longer exists','err');return;}
+  var ch=x.type==='charge',fields=[{id:'date',label:'Date',type:'date',value:dbtDay(x.date)},{id:'amount',label:'Amount (Rs.)',type:'number',value:Number(x.amount).toFixed(2)}];
+  if(!ch)fields.push({id:'method',label:'Method',options:['Cash','Bank Transfer','Cheque','Card','Other'],value:x.method||'Cash'});
+  fields.push({id:'note',label:'Note',value:x.note||'',full:true});
+  upForm((ch?'Edit old due for ':'Edit payment from ')+dbtName(c),fields,function(v){
+    var amt=Math.round((parseFloat(v.amount)||0)*100)/100;if(!(amt>0)){toast('Enter a valid amount','err');return false;}
+    var bal=Number(c.balance)||0,oldAmt=Number(x.amount)||0;
+    var nb=ch?bal+(amt-oldAmt):bal+(oldAmt-amt);
+    if(nb<-0.005){toast('That would make the customer balance negative','err');return false;}
+    c.balance=Math.max(0,Math.round(nb*100)/100);
+    x.amount=amt;x.date=new Date((v.date||crToday())+'T12:00:00').toISOString();x.note=(v.note||'').trim();if(!ch)x.method=v.method;x.balanceAfter=null;
+    logAudit(ch?'due_added':'dues_settled',{customer:dbtName(c),edited:true,amount:oldAmt===amt?amt:(oldAmt+' -> '+amt)});
+    saveDB();renderDebtors();toast('✅ Entry updated. Balance now '+fmt(c.balance),'ok');});
+}
+function dbtDeleteEntry(sid){
+  if(!isOwnerUser()){toast('🔒 Only the owner can delete payment records','err');return;}
+  var x=dbtSet().find(function(e){return e.id===sid;});if(!x)return;var c=dbtCust(x.custId);var ch=x.type==='charge';
+  showConfirm(ch?'Delete old due?':'Delete payment?',ch?('Remove the '+fmt(x.amount)+' old due for <strong>'+crEsc(x.customer)+'</strong>? Their balance goes down by that amount.'):('Remove the '+fmt(x.amount)+' payment from <strong>'+crEsc(x.customer)+'</strong>? Their balance goes back up.'),function(){
+    if(c){var bal=Number(c.balance)||0;c.balance=Math.max(0,Math.round((ch?bal-x.amount:bal+x.amount)*100)/100);}
+    DB.dueSettlements=dbtSet().filter(function(e){return e.id!==sid;});
+    logAudit('dues_settled',{customer:x.customer,deleted:true,amount:x.amount});
+    saveDB();renderDebtors();toast('Entry removed','ok');});
 }
 
 // ----- Collect payment -----
@@ -8527,7 +8584,7 @@ document.addEventListener('DOMContentLoaded',function(){
   document.addEventListener('click',function(e){
     var t=e.target.closest&&e.target.closest('[data-dbact]');if(!t)return;
     var a=t.getAttribute('data-dbact'),cid=t.getAttribute('data-cid');
-    if(a==='pay')openDbtPay(cid);else if(a==='ledger')dbtShowLedger(cid);else if(a==='remind')dbtRemind(cid);
+    if(a==='pay')openDbtPay(cid);else if(a==='ledger')dbtShowLedger(cid);else if(a==='remind')dbtRemind(cid);else if(a==='editpay')dbtEditEntry(t.getAttribute('data-sid'));else if(a==='delpay')dbtDeleteEntry(t.getAttribute('data-sid'));
   });
 });
 </script>
@@ -8661,40 +8718,81 @@ function vehSectionHtml(c){
 function qtList(){if(!DB.quotes)DB.quotes=[];return DB.quotes;}
 function qtStatus(q){return (q.status==='Open'&&q.validUntil&&q.validUntil<crToday())?'Expired':q.status;}
 function qtNextNo(){var m=0;qtList().forEach(function(q){var n=parseInt(String(q.no||'').replace(/\D/g,''),10);if(n>m)m=n;});return 'Q-'+String(m+1).padStart(4,'0');}
-var qtEditId=null;
+var qtEditId=null,QD={items:[]};
+function upForm(title,fields,onSave){
+  ge('ed-title').textContent=title;
+  ge('ed-fields').innerHTML=fields.map(function(f){
+    var inp=f.options?'<select id="edf-'+f.id+'">'+f.options.map(function(o){return '<option'+(o===f.value?' selected':'')+'>'+upEsc(o)+'</option>';}).join('')+'</select>'
+      :'<input id="edf-'+f.id+'" type="'+(f.type||'text')+'"'+(f.type==='number'?' step="0.01" min="0"':'')+' value="'+upEsc(f.value)+'">';
+    return '<div class="fg'+(f.full?' full':'')+'"><label>'+upEsc(f.label)+'</label>'+inp+'</div>';}).join('');
+  window._edSave=function(){var v={};fields.forEach(function(f){v[f.id]=ge('edf-'+f.id).value;});if(onSave(v)!==false)closeOv('ed-ov');};
+  openOv('ed-ov');
+}
+function qtCalc(from){
+  var sub=QD.items.reduce(function(a,i){return a+(Number(i.qty)||0)*(Number(i.price)||0);},0);
+  ge('qtm-sub').value=fmt(sub);
+  if(from==='total'){var t=parseFloat(ge('qtm-total').value)||0;ge('qtm-disc').value=sub>0?Math.max(0,Math.round((sub-t)/sub*10000)/100):0;}
+  else{var d=Math.min(100,Math.max(0,parseFloat(ge('qtm-disc').value)||0));ge('qtm-total').value=(Math.round((sub-sub*d/100)/10)*10).toFixed(2);}
+  QD.sub=sub;
+}
+function qtRenderItems(){
+  ge('qtm-items').innerHTML=QD.items.map(function(i,n){
+    return '<tr><td><input class="qti-name" data-n="'+n+'" value="'+upEsc(i.name)+'" style="width:100%"></td><td><input class="qti-qty" data-n="'+n+'" type="number" min="1" value="'+i.qty+'" style="width:60px"></td>'
+      +'<td><input class="qti-price" data-n="'+n+'" type="number" min="0" step="0.01" value="'+Number(i.price).toFixed(2)+'" style="width:90px"></td><td class="price">'+fmt(i.qty*i.price)+'</td><td><button class="btn bd bsm qti-del" data-n="'+n+'">✕</button></td></tr>';}).join('')
+    ||'<tr><td colspan="5" class="muted" style="text-align:center;padding:10px">No items — add one below</td></tr>';
+  qtCalc();
+}
+function qtAddPart(text){
+  var t=String(text||'').trim().toLowerCase();if(!t)return;
+  var p=DB.parts.find(function(x){return (x.name+' ('+x.sku+')').toLowerCase()===t;})||DB.parts.find(function(x){return x.name.toLowerCase()===t||String(x.sku).toLowerCase()===t;});
+  if(!p){toast('No product matches — use "Custom line" for something not in inventory','err');return;}
+  var ex=QD.items.find(function(i){return i.pid===p.id;});
+  if(ex)ex.qty++;else QD.items.push({pid:p.id,name:p.name,sku:p.sku,qty:1,price:p.price||0,cost:p.cost||0});
+  ge('qtm-add').value='';qtRenderItems();
+}
 function openQuoteModal(editId){
   qtEditId=(typeof editId==='string')?editId:null;
+  ge('qtm-parts').innerHTML=DB.parts.slice(0,4000).map(function(p){return '<option value="'+upEsc(p.name+' ('+p.sku+')')+'">';}).join('');
   if(qtEditId){
     var q=qtFind(qtEditId);if(!q)return;
     ge('qtm-title').textContent='✏️ Edit Quotation '+q.no;
+    QD.items=JSON.parse(JSON.stringify(q.items||[]));
     ge('qtm-cust').value=q.customer||'';ge('qtm-phone').value=q.phone||'';ge('qtm-veh').value=q.vehicle||'';
-    ge('qtm-until').value=q.validUntil||crAddDays(crToday(),7);ge('qtm-total').value=fmt(q.total);ge('qtm-note').value=q.note||'';
+    ge('qtm-date').value=q.date||crToday();ge('qtm-until').value=q.validUntil||crAddDays(crToday(),7);ge('qtm-note').value=q.note||'';
+    ge('qtm-status').value=(q.status==='Open'||q.status==='Sold'||q.status==='Declined')?q.status:'Open';
+    qtRenderItems();ge('qtm-disc').value=q.discIn!=null?q.discIn:(q.disc||0);ge('qtm-total').value=Number(q.total).toFixed(2);
+    qtCalc('total');ge('qtm-total').value=Number(q.total).toFixed(2);
     openOv('qt-ov');return;
   }
   if(!cart.length){toast('Add items to the cart first','err');return;}
   var t=recalcCart(),cs=ge('cart-cust'),c=cs&&cs.value?dbtCust(cs.value):null;
   ge('qtm-title').textContent='📄 Save Quotation';
+  QD.items=cart.map(function(i){return {pid:i.pid,name:i.name,sku:i.sku,qty:i.qty,price:i.price,cost:i.cost};});
   ge('qtm-cust').value=cs&&cs.selectedIndex>=0?cs.options[cs.selectedIndex].text.replace(/^-\s*|\s*-$/g,''):'';
   ge('qtm-phone').value=c?c.phone||'':'';ge('qtm-veh').value=vehSel().label||'';
-  ge('qtm-until').value=crAddDays(crToday(),7);ge('qtm-total').value=fmt(t.tot);ge('qtm-note').value='';
+  ge('qtm-date').value=crToday();ge('qtm-until').value=crAddDays(crToday(),7);ge('qtm-note').value='';ge('qtm-status').value='Open';
+  qtRenderItems();ge('qtm-disc').value=t.enteredDisc||0;ge('qtm-total').value=Number(t.tot).toFixed(2);qtCalc('total');ge('qtm-total').value=Number(t.tot).toFixed(2);
   openOv('qt-ov');
 }
 function saveQuote(){
   var name=ge('qtm-cust').value.trim()||'Walk-in Customer';
+  var items=QD.items.filter(function(i){return String(i.name).trim()&&Number(i.qty)>0;});
+  if(!items.length){toast('Add at least one item','err');return;}
+  var sub=items.reduce(function(a,i){return a+i.qty*i.price;},0),total=Math.max(0,parseFloat(ge('qtm-total').value)||0),da=Math.max(0,sub-total),disc=sub>0?Math.round(da/sub*10000)/100:0;
+  var date=ge('qtm-date').value||crToday(),until=ge('qtm-until').value||crAddDays(date,7),veh=ge('qtm-veh').value.trim(),note=ge('qtm-note').value.trim(),phone=ge('qtm-phone').value.trim(),st=ge('qtm-status').value;
   if(qtEditId){
     var q0=qtFind(qtEditId);if(!q0)return;
-    q0.customer=name;q0.phone=ge('qtm-phone').value.trim();
-    var nv=ge('qtm-veh').value.trim();if(nv!==(q0.vehicle||'')){q0.vehicle=nv;q0.vehId='';}
-    q0.validUntil=ge('qtm-until').value||q0.validUntil;q0.note=ge('qtm-note').value.trim();
-    logAudit('quote_saved',{quote:q0.no,customer:name,edited:true});saveDB();closeOv('qt-ov');renderQuotes();toast('✅ Quote '+q0.no+' updated','ok');qtEditId=null;return;
+    var oldTotal=q0.total;
+    q0.customer=name;q0.phone=phone;if(veh!==(q0.vehicle||'')){q0.vehicle=veh;q0.vehId='';}
+    q0.items=items.map(function(i){return {pid:i.pid||'',name:i.name,sku:i.sku||'',qty:Number(i.qty),price:Number(i.price),cost:Number(i.cost)||0};});
+    q0.sub=sub;q0.da=da;q0.disc=disc;q0.discIn=disc;q0.total=total;q0.date=date;q0.validUntil=until;q0.note=note;q0.status=st;
+    logAudit('quote_saved',{quote:q0.no,customer:name,edited:true,total:total===oldTotal?total:(oldTotal+' -> '+total)});
+    saveDB();closeOv('qt-ov');renderQuotes();toast('✅ Quote '+q0.no+' updated','ok');qtEditId=null;return;
   }
-  if(!cart.length){toast('Cart is empty','err');return;}
-  var t=recalcCart(),cs=ge('cart-cust'),cid=cs?cs.value:'',v=vehSel(),u=window._currentUser||{};
-  var veh=ge('qtm-veh').value.trim(),vid=(veh===v.label)?v.id:'';
-  var q={id:'QT'+Date.now()+Math.floor(Math.random()*1000),no:qtNextNo(),date:crToday(),validUntil:ge('qtm-until').value||crAddDays(crToday(),7),
-    custId:cid,customer:name,phone:ge('qtm-phone').value.trim(),vehicle:veh,vehId:vid,
-    items:cart.map(function(i){return {pid:i.pid,name:i.name,sku:i.sku,qty:i.qty,price:i.price,cost:i.cost};}),
-    sub:t.sub,da:t.da,disc:t.disc,discIn:t.enteredDisc,total:t.tot,note:ge('qtm-note').value.trim(),status:'Open',by:u.displayName||u.username||'',createdAt:new Date().toISOString()};
+  var cs=ge('cart-cust'),v=vehSel(),u=window._currentUser||{};
+  var q={id:'QT'+Date.now()+Math.floor(Math.random()*1000),no:qtNextNo(),date:date,validUntil:until,custId:cs?cs.value:'',customer:name,phone:phone,vehicle:veh,vehId:(veh===v.label)?v.id:'',
+    items:items.map(function(i){return {pid:i.pid||'',name:i.name,sku:i.sku||'',qty:Number(i.qty),price:Number(i.price),cost:Number(i.cost)||0};}),
+    sub:sub,da:da,disc:disc,discIn:disc,total:total,note:note,status:st,by:u.displayName||u.username||'',createdAt:new Date().toISOString()};
   qtList().push(q);logAudit('quote_saved',{quote:q.no,customer:q.customer,total:q.total});
   saveDB();closeOv('qt-ov');toast('✅ Quote '+q.no+' saved','ok');
   showConfirm('Quote '+q.no+' saved','Print it now?',function(){qtPrint(q.id);});
@@ -8721,7 +8819,7 @@ function qtLoad(id){
   var go=function(){
     var nc=[],miss=[];
     q.items.forEach(function(i){
-      var p=DB.parts.find(function(x){return x.id===i.pid;})||DB.parts.find(function(x){return x.sku===i.sku;});
+      var p=(i.pid&&DB.parts.find(function(x){return x.id===i.pid;}))||(i.sku&&DB.parts.find(function(x){return x.sku===i.sku;}));
       if(!p){miss.push(i.name+' (not in inventory)');return;}
       if(p.qty<=0){miss.push(i.name+' (out of stock)');return;}
       var qty=Math.min(i.qty,p.qty);if(qty<i.qty)miss.push(i.name+' (only '+p.qty+' in stock)');
@@ -8920,7 +9018,18 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   // quotes
   on('qt-new','click',function(){switchPanel('pos');toast('Add items, choose the customer, then press 📄 Quote','inf');});
-  on('btn-quote','click',function(){openQuoteModal();});on('qtm-save','click',saveQuote);on('qt-search','input',renderQuotes);on('qt-filter','change',renderQuotes);
+  on('btn-quote','click',function(){openQuoteModal();});
+  on('qtm-add-btn','click',function(){qtAddPart(ge('qtm-add').value);});
+  on('qtm-add','change',function(){qtAddPart(ge('qtm-add').value);});
+  on('qtm-add-custom','click',function(){QD.items.push({pid:'',name:'Custom item',sku:'',qty:1,price:0,cost:0});qtRenderItems();});
+  on('qtm-disc','input',function(){qtCalc();});on('qtm-total','input',function(){qtCalc('total');});
+  if(ge('qtm-items')){
+    ge('qtm-items').addEventListener('input',function(e){var t=e.target,n=parseInt(t.getAttribute('data-n'),10);if(isNaN(n)||!QD.items[n])return;
+      if(t.classList.contains('qti-name'))QD.items[n].name=t.value;else if(t.classList.contains('qti-qty'))QD.items[n].qty=Math.max(1,parseInt(t.value,10)||1);else if(t.classList.contains('qti-price'))QD.items[n].price=Math.max(0,parseFloat(t.value)||0);
+      var tr=t.closest('tr');if(tr&&!t.classList.contains('qti-name'))tr.querySelector('.price').textContent=fmt(QD.items[n].qty*QD.items[n].price);qtCalc();});
+    ge('qtm-items').addEventListener('click',function(e){var t=e.target.closest('.qti-del');if(!t)return;QD.items.splice(parseInt(t.getAttribute('data-n'),10),1);qtRenderItems();});
+  }
+  on('ed-save','click',function(){if(window._edSave)window._edSave();});on('qtm-save','click',saveQuote);on('qt-search','input',renderQuotes);on('qt-filter','change',renderQuotes);
   document.addEventListener('click',function(e){
     var t=e.target.closest&&e.target.closest('[data-qact]');if(!t)return;var a=t.getAttribute('data-qact'),id=t.getAttribute('data-qid');
     if(a==='load')qtLoad(id);else if(a==='edit')openQuoteModal(id);else if(a==='print')qtPrint(id);else if(a==='wa')qtWhatsApp(id);else if(a==='decline')qtSetStatus(id,'Declined');else if(a==='del')qtDelete(id);
