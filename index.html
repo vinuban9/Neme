@@ -8181,9 +8181,25 @@ function dbtDay(iso){return String(iso||'').slice(0,10);}
 // so the unpaid portion is made of the NEWEST credit entries.
 function dbtEntries(cid){
   var out=[];
-  (DB.sales||[]).forEach(function(s){if(String(s.custId)===String(cid)&&s.pay==='Credit (Account)')out.push({kind:'sale',date:dbtDay(s.date),amount:Number(s.total)||0,ref:s.billNo||s.id,id:s.id});});
+  (DB.sales||[]).forEach(function(s){if(String(s.custId)===String(cid)&&s.pay==='Credit (Account)')out.push({kind:'sale',date:dbtDay(s.date),amount:Number(s.total)||0,ref:s.billNo||s.id,id:s.id,sale:s});});
   dbtSet().forEach(function(x){if(String(x.custId)===String(cid)&&x.type==='charge')out.push({kind:'charge',date:dbtDay(x.date),amount:Number(x.amount)||0,ref:x.note||'Old due',id:x.id});});
   return out.sort(function(a,b){return b.date.localeCompare(a.date);});
+}
+function dbtSaleOf(id){return (DB.sales||[]).find(function(x){return String(x.id)===String(id);});}
+// Full bill breakdown: items, subtotal, discount, tax, total, cashier, note. mode 'html' or 'print'
+function dbtBillDetail(s,print){
+  if(!s)return '';
+  var items=(s.items||[]).map(function(i){var q=Number(i.qty)||0,pr=Number(i.price)||0;
+    return '<tr><td>'+crEsc(i.name||'')+'</td><td style="text-align:right">'+q+'</td><td style="text-align:right">'+fmt(pr)+'</td><td style="text-align:right">'+fmt(q*pr)+'</td></tr>';}).join('');
+  var line=function(l,v){return '<tr><td colspan="3" style="text-align:right;color:'+(print?'#000':'var(--mut)')+'">'+l+'</td><td style="text-align:right">'+v+'</td></tr>';};
+  var disc=Number(s.da)||0;
+  var t='<table style="width:100%;font-size:'+(print?'12':'11.5')+'px;margin:4px 0;'+(print?'':'background:var(--sur2);')+'border-collapse:collapse"><thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+items;
+  if(disc>0||Number(s.tax)>0)t+=line('Subtotal',fmt(s.sub!=null?s.sub:s.total));
+  if(disc>0)t+=line('Discount',"-"+fmt(disc));
+  if(Number(s.tax)>0)t+=line('Tax',fmt(s.tax));
+  t+=line('<strong>Bill Total</strong>','<strong>'+fmt(s.total)+'</strong>')+'</tbody></table>';
+  var meta='Bill '+crEsc(s.billNo||s.id)+' · '+crEsc(String(s.date||'').slice(0,16).replace('T',' '))+(s.processedBy?' · by '+crEsc(s.processedBy):'')+(s.note?' · Note: '+crEsc(s.note):'');
+  return '<div style="font-size:'+(print?'11':'11px')+'px;'+(print?'color:#333':'color:var(--mut)')+';margin-top:3px">'+meta+'</div>'+t;
 }
 function dbtUnpaid(c){
   var left=Number(c.balance)||0,res=[];
@@ -8237,9 +8253,9 @@ function dbtViewSales(q){
     dbtUnpaid(c).forEach(function(u){rows.push({c:c,u:u});});});
   rows.sort(function(a,b){return a.u.e.date.localeCompare(b.u.e.date);});
   if(!rows.length)return '<div class="muted" style="padding:30px;text-align:center">No unpaid credit sales.</div>';
-  var h='<div class="muted" style="font-size:12px;margin-bottom:8px">Unpaid credit bills, oldest first. Payments are assumed to clear the oldest bills first.</div><div class="tw"><table><thead><tr><th>Date</th><th>Bill / Ref</th><th>Customer</th><th>Bill Total</th><th>Still Unpaid</th><th>Age</th></tr></thead><tbody>';
+  var h='<div class="muted" style="font-size:12px;margin-bottom:8px">Unpaid credit bills, oldest first. Payments are assumed to clear the oldest bills first.</div><div class="tw"><table><thead><tr><th>Date</th><th>Bill Details</th><th>Customer</th><th>Bill Total</th><th>Still Unpaid</th><th>Age</th></tr></thead><tbody>';
   rows.forEach(function(r){var a=r.u.e.date?Math.max(0,crDaysBetween(crToday(),r.u.e.date)):0;
-    h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.u.e.date)+'</td><td class="mono" style="font-size:11px">'+crEsc(r.u.e.ref)+'</td><td style="font-weight:600">'+crEsc(dbtName(r.c))+'</td><td class="price">'+fmt(r.u.e.amount)+'</td><td class="price" style="font-weight:700">'+fmt(r.u.unpaid)+(r.u.unpaid<r.u.e.amount-0.005?' <span class="muted" style="font-size:10px">(part)</span>':'')+'</td><td>'+dbtAgePill(a)+'</td></tr>';});
+    h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.u.e.date)+'</td><td style="font-size:11px"><span class="mono">'+crEsc(r.u.e.ref)+'</span>'+dbtBillDetail(r.u.e.sale,false)+'</td><td style="font-weight:600">'+crEsc(dbtName(r.c))+'</td><td class="price">'+fmt(r.u.e.amount)+'</td><td class="price" style="font-weight:700">'+fmt(r.u.unpaid)+(r.u.unpaid<r.u.e.amount-0.005?' <span class="muted" style="font-size:10px">(part)</span>':'')+'</td><td>'+dbtAgePill(a)+'</td></tr>';});
   return h+'</tbody></table></div>';
 }
 function dbtViewHistory(q){
@@ -8298,7 +8314,7 @@ function saveDbtCharge(){
 // ----- Ledger / statement / reminder -----
 function dbtLedgerRows(cid){
   var rows=[];
-  dbtEntries(cid).forEach(function(e){rows.push({date:e.date,desc:e.kind==='sale'?'Credit sale '+e.ref:'Old due: '+e.ref,debit:e.amount,credit:0});});
+  dbtEntries(cid).forEach(function(e){rows.push({date:e.date,desc:e.kind==='sale'?'Credit sale '+e.ref:'Old due: '+e.ref,debit:e.amount,credit:0,sale:e.sale});});
   dbtSet().forEach(function(x){if(String(x.custId)===String(cid)&&x.type!=='charge')rows.push({date:dbtDay(x.date),desc:'Payment received'+(x.method?' ('+x.method+')':'')+(x.note?' — '+x.note:''),debit:0,credit:Number(x.amount)||0});});
   return rows.sort(function(a,b){return a.date.localeCompare(b.date);});
 }
@@ -8309,7 +8325,7 @@ function dbtShowLedger(cid){
   var h='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px"><div><span class="muted">Owes now</span><br><strong style="color:'+((Number(c.balance)||0)>0?'#ff5a5a':'var(--grn)')+'">'+fmt(c.balance)+'</strong></div>'+(c.phone?'<div><span class="muted">Phone</span><br><strong>'+crEsc(c.phone)+'</strong></div>':'')+(Number(c.credit)?'<div><span class="muted">Credit limit</span><br><strong>'+fmt(c.credit)+'</strong></div>':'')+'</div>';
   if(!rows.length)h+='<div class="muted" style="padding:20px;text-align:center">No credit history recorded for this customer.</div>';
   else{h+='<div class="tw"><table><thead><tr><th>Date</th><th>Details</th><th>Charged</th><th>Paid</th><th>Running</th></tr></thead><tbody>';
-    rows.forEach(function(r){run+=r.debit-r.credit;h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.date)+'</td><td>'+crEsc(r.desc)+'</td><td class="price">'+(r.debit?fmt(r.debit):'-')+'</td><td class="price" style="color:var(--grn)">'+(r.credit?fmt(r.credit):'-')+'</td><td class="price">'+fmt(Math.max(0,run))+'</td></tr>';});
+    rows.forEach(function(r){run+=r.debit-r.credit;h+='<tr><td class="mono" style="font-size:11px">'+crEsc(r.date)+'</td><td><strong>'+crEsc(r.desc)+'</strong>'+dbtBillDetail(r.sale,false)+'</td><td class="price">'+(r.debit?fmt(r.debit):'-')+'</td><td class="price" style="color:var(--grn)">'+(r.credit?fmt(r.credit):'-')+'</td><td class="price">'+fmt(Math.max(0,run))+'</td></tr>';});
     h+='</tbody></table></div><div class="muted" style="font-size:11px;margin-top:6px">Older balances recorded before this feature may not appear in the running column; "Owes now" is always the true balance.</div>';}
   ge('dbl-body').innerHTML=h;
   ge('dbl-pay').style.display=(Number(c.balance)||0)>0?'':'none';
@@ -8317,7 +8333,7 @@ function dbtShowLedger(cid){
 }
 function dbtPrintStatement(){
   var c=dbtCust(DBT.custId);if(!c)return;var run=0,rows='';
-  dbtLedgerRows(c.id).forEach(function(r){run+=r.debit-r.credit;rows+='<tr><td>'+crEsc(r.date)+'</td><td>'+crEsc(r.desc)+'</td><td style="text-align:right">'+(r.debit?fmt(r.debit):'')+'</td><td style="text-align:right">'+(r.credit?fmt(r.credit):'')+'</td><td style="text-align:right">'+fmt(Math.max(0,run))+'</td></tr>';});
+  dbtLedgerRows(c.id).forEach(function(r){run+=r.debit-r.credit;rows+='<tr><td>'+crEsc(r.date)+'</td><td><strong>'+crEsc(r.desc)+'</strong>'+dbtBillDetail(r.sale,true)+'</td><td style="text-align:right">'+(r.debit?fmt(r.debit):'')+'</td><td style="text-align:right">'+(r.credit?fmt(r.credit):'')+'</td><td style="text-align:right">'+fmt(Math.max(0,run))+'</td></tr>';});
   crPrintHtml('Account Statement — '+crEsc(dbtName(c)),'<div>'+crEsc((DB.settings&&DB.settings.shopName)||'')+' · '+crToday()+'</div><table><thead><tr><th>Date</th><th>Details</th><th>Charged</th><th>Paid</th><th>Balance</th></tr></thead><tbody>'+rows+'<tr><th colspan="4" style="text-align:right">Amount due</th><th style="text-align:right">'+fmt(c.balance)+'</th></tr></tbody></table>');
 }
 function dbtRemind(cid){
