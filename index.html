@@ -2234,8 +2234,27 @@ function restoreFromAutoBackup(date){
 function tick(){ge('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});}
 setInterval(tick,1000);tick();
 
+// Owner sees everything. Every other account (current and future) is locked out of these panels.
+var OWNER_ONLY_PANELS=['home','bills','reports','creditors','staff'];
+var OWNER_ONLY_MOBILE_TABS=['sales','reports'];
+function isOwnerUser(){return !!(window._currentUser&&window._currentUser.role==='owner');}
+function canAccessPanel(id){
+  if(!window._currentUser)return true; // pre-login: lock screen covers the app
+  return isOwnerUser()||OWNER_ONLY_PANELS.indexOf(id)<0;
+}
+function applyRoleAccess(){
+  var owner=isOwnerUser();
+  OWNER_ONLY_PANELS.forEach(function(id){
+    var b=document.querySelector('.tnav[data-panel="'+id+'"]');
+    if(b)b.style.display=owner?'':'none';
+  });
+  OWNER_ONLY_MOBILE_TABS.forEach(function(t){
+    var b=document.getElementById('m-tab-'+t);
+    if(b)b.style.display=owner?'':'none';
+  });
+}
 function switchPanel(id){
-  if(id==='creditors'&&!(window._currentUser&&window._currentUser.role==='owner')){toast('Creditors is owner-only','err');id='home';}
+  if(!canAccessPanel(id)){toast('🔒 '+id.charAt(0).toUpperCase()+id.slice(1)+' is available to the owner account only','err');id='pos';}
   window._activePanel = id;
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tnav').forEach(function(n){n.classList.remove('active');});
@@ -4013,10 +4032,9 @@ function loginErrorShake(msg){
 
 function loginUser(user){
   window._currentUser={id:user.id, username:user.username, displayName:user.displayName, role:user.role};
-  var staffTab=ge('tnav-staff');
-  if(staffTab) staffTab.style.display = (user.role==='owner') ? '' : 'none';
-  var crTab=ge('tnav-creditors'); if(crTab) crTab.style.display = (user.role==='owner') ? '' : 'none';
-  try{ switchPanel('home'); }catch(e){ console.warn('switchPanel(home) on login failed:',e); } // always land fresh, never on a stale/restricted panel
+  applyRoleAccess();
+  window._mTab='inv'; try{ if(document.getElementById('m-page-inv')) mGo('inv'); }catch(e){}
+  try{ switchPanel(user.role==='owner'?'home':'pos'); }catch(e){ console.warn('switchPanel on login failed:',e); } // always land fresh, never on a stale/restricted panel
   unlockApp();
   updateUserBadge();
   setTimeout(function(){try{crLoginReminder();}catch(e){}},1200);
@@ -7497,6 +7515,7 @@ function initMobileMode(){
 }
 
 function mGo(tab){
+  if(OWNER_ONLY_MOBILE_TABS.indexOf(tab)>=0&&!isOwnerUser()){toast('🔒 Owner account only','err');tab='inv';}
   window._mTab=tab;
   ['inv','sales','prices','reports'].forEach(function(t){
     document.getElementById('m-page-'+t).style.display = t===tab?'block':'none';
