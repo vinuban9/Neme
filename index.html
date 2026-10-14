@@ -312,6 +312,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="btn bs bsm" onclick="document.getElementById('import-excel-input').click()" title="Import inventory from Excel">📤 Import</button>
     <button class="btn bs bsm" onclick="document.getElementById('invoice-upload-input').click()" title="Upload invoice">📄 Invoice</button>
     <button class="btn bs bsm" onclick="document.getElementById('invoice-csv-input').click()" title="Import invoice CSV from the free extractor">📋 Invoice CSV</button>
+    <button class="btn bs bsm" onclick="renumberAllSKUs()" title="Renumber ALL SKUs 1,2,3... with no gaps or duplicates">🔢 Renumber All</button>
     <button class="btn bs bsm" onclick="fixBrokenSKUs()" title="Renumber any products that have a wrong SKU">🔧 Fix SKUs</button>
     <button class="btn bs bsm" onclick="dedupeParts()" title="Merge products that appear more than once (e.g. after syncing multiple devices)">🧹 Remove Duplicates</button>
     <button class="btn bp bsm" id="btn-add-part">+ Add Part</button>
@@ -1506,6 +1507,21 @@ function generateSKU(itemName){
   // Guard against collisions just in case
   while(isTaken(String(next))){next++;}
   return String(next);
+}
+
+// Renumbers EVERY product 1..N with no gaps/duplicates, keeping the current
+// SKU order (non-numeric SKUs go last). Stock, prices, barcodes, sales untouched.
+function renumberAllSKUs(){
+  DB.parts.forEach(function(p){p.sku=stripExcelWrap(p.sku);});
+  var idx=DB.parts.map(function(p,i){return {p:p,i:i,n:/^\d+$/.test(p.sku)?parseInt(p.sku,10):Infinity};});
+  idx.sort(function(a,b){return a.n-b.n||a.i-b.i;});
+  var changed=idx.filter(function(o,k){return o.p.sku!==String(k+1);}).length;
+  if(!changed){toast('✅ SKUs are already 1 to '+idx.length+' in order.','ok');return;}
+  if(!confirm('Renumber all '+idx.length+' products as 1 to '+idx.length+' (no gaps, no duplicates)?\n\n'+changed+' SKUs will change. Stock, prices and sales history are NOT affected.\n\nDo this on ONE device only, then wait for sync before using the others.'))return;
+  idx.forEach(function(o,k){o.p.sku=String(k+1);});
+  saveDB();
+  if(typeof renderInv==='function')renderInv();
+  toast('✅ Renumbered '+idx.length+' products: 1 to '+idx.length+'.','ok');
 }
 
 // Finds products whose SKU is NOT a plain number (e.g. the product name was
