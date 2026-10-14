@@ -691,7 +691,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 <div class="overlay" id="qt-ov"><div class="modal" style="max-width:820px;width:96%">
   <div class="mt" id="qtm-title">&#128196; Save Quotation</div>
   <div class="fgrid">
-    <div class="fg full"><label>Customer Name</label><input id="qtm-cust" placeholder="Customer name"></div>
+    <div class="fg full"><label>To (customer name)</label><input id="qtm-cust" placeholder="Customer name"></div>
     <div class="fg"><label>Phone</label><input id="qtm-phone" placeholder="optional"></div>
     <div class="fg"><label>Vehicle</label><input id="qtm-veh" placeholder="optional"></div>
     <div class="fg"><label>Quote Date</label><input id="qtm-date" type="date"></div>
@@ -8812,7 +8812,7 @@ function qtPrint(id){
   var rows=q.items.map(function(i,n){return '<tr><td>'+(n+1)+'</td><td>'+upEsc(i.name)+'</td><td>'+upEsc(i.sku)+'</td><td class="r">'+i.qty+'</td><td class="r">'+fmt(i.price)+'</td><td class="r">'+fmt(i.price*i.qty)+'</td></tr>';}).join('');
   upPrint('Quotation '+q.no,'<div style="text-align:center"><div style="font-size:20px;font-weight:bold">'+upEsc(sh.name)+'</div><div>'+upEsc(sh.addr)+'</div><div>'+upEsc(sh.phone)+'</div></div><h2 style="text-align:center;margin:14px 0 4px">QUOTATION</h2>'
     +'<table style="border:none"><tr><td style="border:none"><strong>Quote No:</strong> '+upEsc(q.no)+'<br><strong>Date:</strong> '+upEsc(q.date)+'<br><strong>Valid until:</strong> '+upEsc(q.validUntil)+'</td>'
-    +'<td style="border:none"><strong>Customer:</strong> '+upEsc(q.customer)+(q.phone?'<br><strong>Phone:</strong> '+upEsc(q.phone):'')+(q.vehicle?'<br><strong>Vehicle:</strong> '+upEsc(q.vehicle):'')+'</td></tr></table>'
+    +'<td style="border:none"><strong>To:</strong> '+upEsc(q.customer)+(q.phone?'<br><strong>Phone:</strong> '+upEsc(q.phone):'')+(q.vehicle?'<br><strong>Vehicle:</strong> '+upEsc(q.vehicle):'')+'</td></tr></table>'
     +'<table><thead><tr><th>#</th><th>Item</th><th>SKU</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead><tbody>'+rows
     +'<tr><td colspan="5" class="r">Subtotal</td><td class="r">'+fmt(q.sub)+'</td></tr>'+(q.da>0?'<tr><td colspan="5" class="r">Discount</td><td class="r">-'+fmt(q.da)+'</td></tr>':'')
     +'<tr><th colspan="5" class="r">TOTAL</th><th class="r">'+fmt(q.total)+'</th></tr></tbody></table>'
