@@ -407,7 +407,8 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
       <input id="qt-search" placeholder="Search quote no / customer / vehicle..." style="min-width:220px">
       <select id="qt-filter" style="width:auto"><option value="all">All</option><option value="Open">Open</option><option value="Sold">Sold</option><option value="Expired">Expired</option><option value="Declined">Declined</option></select>
-      <button class="btn bp bsm" id="qt-new">+ From Current Cart</button>
+      <button class="btn bs bsm" id="qt-fromcart" title="Use the items already in the POS cart">&#128722; From POS Cart</button>
+      <button class="btn bp bsm" id="qt-new">+ New Quote</button>
     </div>
   </div>
   <div class="pb">
@@ -691,7 +692,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 <div class="overlay" id="qt-ov"><div class="modal" style="max-width:820px;width:96%">
   <div class="mt" id="qtm-title">&#128196; Save Quotation</div>
   <div class="fgrid">
-    <div class="fg full"><label>To (customer name)</label><input id="qtm-cust" placeholder="Customer name"></div>
+    <div class="fg full"><label>To (customer name)</label><input id="qtm-cust" list="qtm-custs" placeholder="Type a name or pick a saved customer"><datalist id="qtm-custs"></datalist></div>
     <div class="fg"><label>Phone</label><input id="qtm-phone" placeholder="optional"></div>
     <div class="fg"><label>Vehicle</label><input id="qtm-veh" placeholder="optional"></div>
     <div class="fg"><label>Quote Date</label><input id="qtm-date" type="date"></div>
@@ -700,7 +701,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
   <div style="font-family:Rajdhani,sans-serif;font-weight:700;margin:10px 0 4px">Items</div>
   <div style="border:1px solid var(--brd);border-radius:4px;max-height:30vh;overflow:auto"><table style="width:100%"><thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Amount</th><th></th></tr></thead><tbody id="qtm-items"></tbody></table></div>
   <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap">
-    <input id="qtm-add" list="qtm-parts" placeholder="Type a product to add from inventory..." style="flex:1;min-width:200px"><datalist id="qtm-parts"></datalist>
+    <input id="qtm-add" list="qtm-parts" placeholder="Type any product - in stock or not..." style="flex:1;min-width:200px"><datalist id="qtm-parts"></datalist>
     <button class="btn bs bsm" id="qtm-add-btn">+ Add item</button>
     <button class="btn bs bsm" id="qtm-add-custom">+ Custom line</button>
   </div>
@@ -8746,7 +8747,8 @@ function qtCalc(from){
 }
 function qtRenderItems(){
   ge('qtm-items').innerHTML=QD.items.map(function(i,n){
-    return '<tr><td><input class="qti-name" data-n="'+n+'" value="'+upEsc(i.name)+'" style="width:100%"></td><td><input class="qti-qty" data-n="'+n+'" type="number" min="1" value="'+i.qty+'" style="width:60px"></td>'
+    var pp=i.pid?DB.parts.find(function(x){return x.id===i.pid;}):null,hint=!i.pid?'<div class="muted" style="font-size:10px">not in inventory</div>':(pp&&!(pp.qty>0)?'<div style="font-size:10px;color:#ff5a5a">out of stock</div>':(pp?'<div class="muted" style="font-size:10px">'+pp.qty+' in stock</div>':''));
+    return '<tr><td><input class="qti-name" data-n="'+n+'" value="'+upEsc(i.name)+'" style="width:100%">'+hint+'</td><td><input class="qti-qty" data-n="'+n+'" type="number" min="1" value="'+i.qty+'" style="width:60px"></td>'
       +'<td><input class="qti-price" data-n="'+n+'" type="number" min="0" step="0.01" value="'+Number(i.price).toFixed(2)+'" style="width:90px"></td><td class="price">'+fmt(i.qty*i.price)+'</td><td><button class="btn bd bsm qti-del" data-n="'+n+'">✕</button></td></tr>';}).join('')
     ||'<tr><td colspan="5" class="muted" style="text-align:center;padding:10px">No items — add one below</td></tr>';
   qtCalc();
@@ -8759,8 +8761,15 @@ function qtAddPart(text){
   if(ex)ex.qty++;else QD.items.push({pid:p.id,name:p.name,sku:p.sku,qty:1,price:p.price||0,cost:p.cost||0});
   ge('qtm-add').value='';qtRenderItems();
 }
+function qtCustPicked(){
+  var v=ge('qtm-cust').value.trim().toLowerCase();if(!v)return;
+  var c=(DB.customers||[]).find(function(x){return dbtName(x).toLowerCase()===v;});
+  if(c){if(!ge('qtm-phone').value)ge('qtm-phone').value=c.phone||'';var vs=vehList(c);if(!ge('qtm-veh').value&&vs.length===1)ge('qtm-veh').value=vehLabel(vs[0]);}
+}
 function openQuoteModal(editId){
+  var blank=(editId==='__new');if(blank)editId=null;
   qtEditId=(typeof editId==='string')?editId:null;
+  ge('qtm-custs').innerHTML=(DB.customers||[]).map(function(c){return '<option value="'+upEsc(dbtName(c))+'">';}).join('');
   ge('qtm-parts').innerHTML=DB.parts.slice(0,4000).map(function(p){return '<option value="'+upEsc(p.name+' ('+p.sku+')')+'">';}).join('');
   if(qtEditId){
     var q=qtFind(qtEditId);if(!q)return;
@@ -8772,6 +8781,13 @@ function openQuoteModal(editId){
     qtRenderItems();ge('qtm-disc').value=q.discIn!=null?q.discIn:(q.disc||0);ge('qtm-total').value=Number(q.total).toFixed(2);
     qtCalc('total');ge('qtm-total').value=Number(q.total).toFixed(2);
     openOv('qt-ov');return;
+  }
+  window._qtBlank=blank;
+  if(blank){
+    ge('qtm-title').textContent='📄 New Quotation';QD.items=[];
+    ['qtm-cust','qtm-phone','qtm-veh','qtm-note'].forEach(function(id){ge(id).value='';});
+    ge('qtm-date').value=crToday();ge('qtm-until').value=crAddDays(crToday(),7);ge('qtm-status').value='Open';ge('qtm-disc').value=0;
+    qtRenderItems();openOv('qt-ov');setTimeout(function(){ge('qtm-cust').focus();},50);return;
   }
   if(!cart.length){toast('Add items to the cart first','err');return;}
   var t=recalcCart(),cs=ge('cart-cust'),c=cs&&cs.value?dbtCust(cs.value):null;
@@ -8798,12 +8814,15 @@ function saveQuote(){
     logAudit('quote_saved',{quote:q0.no,customer:name,edited:true,total:total===oldTotal?total:(oldTotal+' -> '+total)});
     saveDB();closeOv('qt-ov');renderQuotes();toast('✅ Quote '+q0.no+' updated','ok');qtEditId=null;return;
   }
-  var cs=ge('cart-cust'),v=vehSel(),u=window._currentUser||{};
-  var q={id:'QT'+Date.now()+Math.floor(Math.random()*1000),no:qtNextNo(),date:date,validUntil:until,custId:cs?cs.value:'',customer:name,phone:phone,vehicle:veh,vehId:(veh===v.label)?v.id:'',
+  var cs=ge('cart-cust'),v=window._qtBlank?{id:'',label:''}:vehSel(),u=window._currentUser||{};
+  var mc=(DB.customers||[]).find(function(x){return dbtName(x).toLowerCase()===name.toLowerCase();});
+  var custId=window._qtBlank?(mc?mc.id:''):(cs?cs.value:'');
+  if(!window._qtBlank&&mc&&cs&&cs.value!==mc.id)custId=mc.id;
+  var q={id:'QT'+Date.now()+Math.floor(Math.random()*1000),no:qtNextNo(),date:date,validUntil:until,custId:custId,customer:name,phone:phone,vehicle:veh,vehId:(veh===v.label)?v.id:'',
     items:items.map(function(i){return {pid:i.pid||'',name:i.name,sku:i.sku||'',qty:Number(i.qty),price:Number(i.price),cost:Number(i.cost)||0};}),
     sub:sub,da:da,disc:disc,discIn:disc,total:total,note:note,status:st,by:u.displayName||u.username||'',createdAt:new Date().toISOString()};
   qtList().push(q);logAudit('quote_saved',{quote:q.no,customer:q.customer,total:q.total});
-  saveDB();closeOv('qt-ov');toast('✅ Quote '+q.no+' saved','ok');
+  saveDB();closeOv('qt-ov');if(window._activePanel==='quotes')renderQuotes();toast('✅ Quote '+q.no+' saved','ok');
   showConfirm('Quote '+q.no+' saved','Print it now?',function(){qtPrint(q.id);});
 }
 function qtFind(id){return qtList().find(function(q){return q.id===id;});}
@@ -9026,7 +9045,9 @@ document.addEventListener('DOMContentLoaded',function(){
     }catch(err){toast('Backup error: '+err.message,'err');}
   });
   // quotes
-  on('qt-new','click',function(){switchPanel('pos');toast('Add items, choose the customer, then press 📄 Quote','inf');});
+  on('qt-new','click',function(){openQuoteModal('__new');});
+  on('qt-fromcart','click',function(){if(cart.length)openQuoteModal();else{switchPanel('pos');toast('Add items to the cart, choose the customer, then press 📄 Quote','inf');}});
+  on('qtm-cust','change',qtCustPicked);
   on('btn-quote','click',function(){openQuoteModal();});
   on('qtm-add-btn','click',function(){qtAddPart(ge('qtm-add').value);});
   on('qtm-add','change',function(){qtAddPart(ge('qtm-add').value);});
