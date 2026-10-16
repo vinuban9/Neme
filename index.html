@@ -9082,7 +9082,7 @@ var ACT_LABELS={sale:['🧾','Sale'],login:['🔑','Login'],logout:['🚪','Logo
   creditor_bill_added:['🧾','Supplier bill added'],creditor_bill_edited:['✏️','Supplier bill edited'],creditor_bill_deleted:['🗑️','Supplier bill deleted'],creditor_payment:['💸','Supplier paid'],creditor_payment_undone:['↩️','Supplier payment undone'],
   quote_saved:['📄','Quote saved'],quote_deleted:['🗑️','Quote deleted'],quote_status:['📄','Quote status'],vehicle_added:['🚗','Vehicle added'],vehicle_edited:['🚗','Vehicle edited'],vehicle_deleted:['🚗','Vehicle removed'],
   backup_created:['💾','Backup created'],backup_restored:['♻️','Backup restored'],auto_backup:['💾','Auto backup'],all_bills_cleared:['⚠️','All bills cleared'],invoice_applied:['📄','Invoice applied'],invoice_reversed:['↩️','Invoice reversed'],
-  setting_changed:['⚙️','Setting changed'],cleanup:['🧹','Cleanup'],category_changed:['🏷️','Category changed'],sku_renumbered:['🔢','SKUs renumbered'],labels_barcodes:['🏷️','Barcodes created']};
+  setting_changed:['⚙️','Setting changed'],cleanup:['🧹','Cleanup'],category_changed:['🏷️','Category changed'],sku_renumbered:['🔢','SKUs renumbered'],labels_barcodes:['🏷️','Barcodes created'],invoice_duplicate_blocked:['⛔','Duplicate invoice blocked']};
 function actLabel(a){var l=ACT_LABELS[a];return l?(l[0]+' '+l[1]):('• '+String(a).replace(/_/g,' '));}
 function actDetails(d){
   if(!d||typeof d!=='object')return String(d||'');
@@ -9857,6 +9857,57 @@ document.addEventListener('DOMContentLoaded',function(){
     if(a2==='slip')crPrintSlip(bt);else if(a2==='advice')crSendAdvice(bt);
   });
 });
+
+
+// ===== DUPLICATE SUPPLIER INVOICE GUARD =====
+// The same invoice number (from the same supplier) can only be added to stock once.
+function invNormNo(n){return String(n||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(^|[A-Z])0+(?=\d)/g,'$1');}
+function invNormCo(c){return String(c||'').toLowerCase().replace(/\(?pvt\)?|ltd|limited|private|company|\bco\b|[^a-z0-9]/g,'');}
+function invFindDuplicate(no,company){
+  var n=invNormNo(no);if(!n)return null;var c=invNormCo(company);
+  return (DB.invoices||[]).find(function(inv){
+    if(invNormNo(inv.invoiceNo||inv.number)!==n)return false;
+    var ic=invNormCo(inv.company||inv.supName||'');
+    if(!c||!ic)return true;                 // can't compare suppliers -> number match is enough
+    return ic===c||ic.indexOf(c)>=0||c.indexOf(ic)>=0;
+  })||null;
+}
+function invDupText(d){return 'Invoice <strong>'+upEsc(d.invoiceNo||d.number||'')+'</strong>'+((d.company||d.supName)?' from <strong>'+upEsc(d.company||d.supName)+'</strong>':'')+' was already added'+(d.savedAt?' on '+upEsc(d.savedAt):(d.date?' (invoice date '+upEsc(d.date)+')':''))+(d.itemCount?' with '+d.itemCount+' item(s)':'')+'.';}
+(function(){
+  // 1) warn on the review screen as soon as the scan/CSV is read
+  if(typeof showInvoiceResults==='function'){
+    var _sir=showInvoiceResults;
+    showInvoiceResults=function(img,data){
+      var r=_sir.apply(this,arguments);
+      try{var d=data&&invFindDuplicate(data.invoiceNo,data.company);
+        var m=document.querySelector('#invoice-modal .modal')||document.querySelector('#invoice-modal > div');
+        if(d&&m){var w=document.createElement('div');w.id='inv-dup-warn';w.style.cssText='background:rgba(255,90,90,.15);border:2px solid #ff5a5a;border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:13px';
+          w.innerHTML='⛔ <strong>Duplicate invoice!</strong> '+invDupText(d)+'<br>Stock will <strong>not</strong> be added again. If the invoice number was read wrongly, correct it below before saving.';m.insertBefore(w,m.firstChild);}
+      }catch(e){console.warn(e);}
+      return r;
+    };
+  }
+  // 2) hard block when saving the review screen
+  if(typeof saveInvoiceData==='function'){
+    var _sid=saveInvoiceData;
+    saveInvoiceData=function(){
+      try{
+        var no=(ge('inv-no')||{}).value,co=(ge('inv-company')||{}).value,d=invFindDuplicate(no,co);
+        if(d){upInfo('⛔ Duplicate invoice — not added',invDupText(d)+'<br><br>The stock was <strong>not</strong> added again. If this really is a different invoice, check the invoice number (it may have been read wrongly) and save again.');try{logAudit('invoice_duplicate_blocked',{invoice:no,supplier:co});}catch(e){}return;}
+      }catch(e){console.warn(e);}
+      return _sid.apply(this,arguments);
+    };
+  }
+  // 3) last safety net right before stock is changed
+  if(typeof finalizeInvoiceSave==='function'){
+    var _fis2=finalizeInvoiceSave;
+    finalizeInvoiceSave=function(){
+      var d=invFindDuplicate(window.invoiceNo,window.invoiceCompany);
+      if(d){toast('⛔ Invoice '+window.invoiceNo+' was already added — stock NOT changed','err');try{closeInvoiceModal();}catch(e){}upInfo('⛔ Duplicate invoice — not added',invDupText(d));return;}
+      return _fis2.apply(this,arguments);
+    };
+  }
+})();
 
 // keep the vehicle picker in step with the customer picker
 (function(){var _rcd=renderCustDrop;renderCustDrop=function(){var r=_rcd.apply(this,arguments);try{vehRefresh();}catch(e){}return r;};})();
