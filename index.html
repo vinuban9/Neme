@@ -692,7 +692,8 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
 <div class="overlay" id="qt-ov"><div class="modal" style="max-width:820px;width:96%">
   <div class="mt" id="qtm-title">&#128196; Save Quotation</div>
   <div class="fgrid">
-    <div class="fg full"><label>To (customer name)</label><input id="qtm-cust" list="qtm-custs" placeholder="Type a name or pick a saved customer"><datalist id="qtm-custs"></datalist></div>
+    <div class="fg full"><label>To &mdash; press Enter for a new line</label><textarea id="qtm-cust" rows="4" style="resize:vertical" placeholder="The Manager,&#10;Hopton Estate,&#10;Uda Pussellawa."></textarea></div>
+    <div class="fg full"><label>Fill from a saved customer (optional)</label><input id="qtm-pick" list="qtm-custs" placeholder="Start typing a customer name..."><datalist id="qtm-custs"></datalist></div>
     <div class="fg"><label>Phone</label><input id="qtm-phone" placeholder="optional"></div>
     <div class="fg"><label>Vehicle</label><input id="qtm-veh" placeholder="optional"></div>
     <div class="fg"><label>Quote Date</label><input id="qtm-date" type="date"></div>
@@ -8761,14 +8762,21 @@ function qtAddPart(text){
   if(ex)ex.qty++;else QD.items.push({pid:p.id,name:p.name,sku:p.sku,qty:1,price:p.price||0,cost:p.cost||0});
   ge('qtm-add').value='';qtRenderItems();
 }
+function qtToText(t){return String(t||'').split('\n').map(function(l){return l.trim();}).filter(function(l,i,arr){return l||(i>0&&i<arr.length-1);}).join('\n').trim();}
+function qtToOneLine(t){return String(t||'').split('\n').map(function(l){return l.trim().replace(/,$/,'');}).filter(Boolean).join(', ');}
 function qtCustPicked(){
-  var v=ge('qtm-cust').value.trim().toLowerCase();if(!v)return;
-  var c=(DB.customers||[]).find(function(x){return dbtName(x).toLowerCase()===v;});
-  if(c){if(!ge('qtm-phone').value)ge('qtm-phone').value=c.phone||'';var vs=vehList(c);if(!ge('qtm-veh').value&&vs.length===1)ge('qtm-veh').value=vehLabel(vs[0]);}
+  var v=ge('qtm-pick').value.trim().toLowerCase();if(!v)return;
+  var c=(DB.customers||[]).find(function(x){return dbtName(x).toLowerCase()===v;});if(!c)return;
+  window._qtPickId=c.id;
+  var lines=[];if(c.type==='Estate'&&c.contact)lines.push(c.contact+',');lines.push(dbtName(c)+(c.addr?',':''));if(c.addr)lines.push(c.addr);
+  if(!ge('qtm-cust').value.trim())ge('qtm-cust').value=lines.join('\n');else ge('qtm-cust').value=ge('qtm-cust').value.replace(/\s+$/,'')+'\n'+lines.join('\n');
+  if(!ge('qtm-phone').value)ge('qtm-phone').value=c.phone||'';
+  var vs=vehList(c);if(!ge('qtm-veh').value&&vs.length===1)ge('qtm-veh').value=vehLabel(vs[0]);
+  ge('qtm-pick').value='';
 }
 function openQuoteModal(editId){
   var blank=(editId==='__new');if(blank)editId=null;
-  qtEditId=(typeof editId==='string')?editId:null;
+  qtEditId=(typeof editId==='string')?editId:null;window._qtPickId=null;if(ge('qtm-pick'))ge('qtm-pick').value='';
   ge('qtm-custs').innerHTML=(DB.customers||[]).map(function(c){return '<option value="'+upEsc(dbtName(c))+'">';}).join('');
   ge('qtm-parts').innerHTML=DB.parts.slice(0,4000).map(function(p){return '<option value="'+upEsc(p.name+' ('+p.sku+')')+'">';}).join('');
   if(qtEditId){
@@ -8800,7 +8808,7 @@ function openQuoteModal(editId){
   openOv('qt-ov');
 }
 function saveQuote(){
-  var name=ge('qtm-cust').value.trim()||'Walk-in Customer';
+  var name=qtToText(ge('qtm-cust').value)||'Walk-in Customer';
   var items=QD.items.filter(function(i){return String(i.name).trim()&&Number(i.qty)>0;});
   if(!items.length){toast('Add at least one item','err');return;}
   var sub=items.reduce(function(a,i){return a+i.qty*i.price;},0),total=Math.max(0,parseFloat(ge('qtm-total').value)||0),da=Math.max(0,sub-total),disc=sub>0?Math.round(da/sub*10000)/100:0;
@@ -8815,7 +8823,8 @@ function saveQuote(){
     saveDB();closeOv('qt-ov');renderQuotes();toast('✅ Quote '+q0.no+' updated','ok');qtEditId=null;return;
   }
   var cs=ge('cart-cust'),v=window._qtBlank?{id:'',label:''}:vehSel(),u=window._currentUser||{};
-  var mc=(DB.customers||[]).find(function(x){return dbtName(x).toLowerCase()===name.toLowerCase();});
+  var nlines=name.toLowerCase().split('\n').map(function(l){return l.trim().replace(/,$/,'');});
+  var mc=(window._qtPickId&&dbtCust(window._qtPickId))||(DB.customers||[]).find(function(x){return nlines.indexOf(dbtName(x).toLowerCase())>=0;});
   var custId=window._qtBlank?(mc?mc.id:''):(cs?cs.value:'');
   if(!window._qtBlank&&mc&&cs&&cs.value!==mc.id)custId=mc.id;
   var q={id:'QT'+Date.now()+Math.floor(Math.random()*1000),no:qtNextNo(),date:date,validUntil:until,custId:custId,customer:name,phone:phone,vehicle:veh,vehId:(veh===v.label)?v.id:'',
@@ -8831,7 +8840,7 @@ function qtPrint(id){
   var rows=q.items.map(function(i,n){return '<tr><td>'+(n+1)+'</td><td>'+upEsc(i.name)+'</td><td>'+upEsc(i.sku)+'</td><td class="r">'+i.qty+'</td><td class="r">'+fmt(i.price)+'</td><td class="r">'+fmt(i.price*i.qty)+'</td></tr>';}).join('');
   upPrint('Quotation '+q.no,'<div style="text-align:center"><div style="font-size:20px;font-weight:bold">'+upEsc(sh.name)+'</div><div>'+upEsc(sh.addr)+'</div><div>'+upEsc(sh.phone)+'</div></div><h2 style="text-align:center;margin:14px 0 4px">QUOTATION</h2>'
     +'<table style="border:none"><tr><td style="border:none"><strong>Quote No:</strong> '+upEsc(q.no)+'<br><strong>Date:</strong> '+upEsc(q.date)+'<br><strong>Valid until:</strong> '+upEsc(q.validUntil)+'</td>'
-    +'<td style="border:none"><strong>To:</strong> '+upEsc(q.customer)+(q.phone?'<br><strong>Phone:</strong> '+upEsc(q.phone):'')+(q.vehicle?'<br><strong>Vehicle:</strong> '+upEsc(q.vehicle):'')+'</td></tr></table>'
+    +'<td style="border:none;vertical-align:top"><strong>To:</strong><br>'+upEsc(q.customer).replace(/\n/g,'<br>')+(q.phone?'<br><strong>Phone:</strong> '+upEsc(q.phone):'')+(q.vehicle?'<br><strong>Vehicle:</strong> '+upEsc(q.vehicle):'')+'</td></tr></table>'
     +'<table><thead><tr><th>#</th><th>Item</th><th>SKU</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead><tbody>'+rows
     +'<tr><td colspan="5" class="r">Subtotal</td><td class="r">'+fmt(q.sub)+'</td></tr>'+(q.da>0?'<tr><td colspan="5" class="r">Discount</td><td class="r">-'+fmt(q.da)+'</td></tr>':'')
     +'<tr><th colspan="5" class="r">TOTAL</th><th class="r">'+fmt(q.total)+'</th></tr></tbody></table>'
@@ -8862,7 +8871,7 @@ function qtLoad(id){
   if(cart.length)showConfirm('Replace cart?','The current cart has items. Replace them with quote '+upEsc(q.no)+'?',go);else go();
 }
 function qtSetStatus(id,st){var q=qtFind(id);if(!q)return;q.status=st;logAudit('quote_status',{quote:q.no,status:st});saveDB();renderQuotes();}
-function qtDelete(id){var q=qtFind(id);if(!q)return;showConfirm('Delete quote?','Delete <strong>'+upEsc(q.no)+'</strong> for '+upEsc(q.customer)+'?',function(){DB.quotes=qtList().filter(function(x){return x.id!==id;});logAudit('quote_deleted',{quote:q.no});saveDB();renderQuotes();});}
+function qtDelete(id){var q=qtFind(id);if(!q)return;showConfirm('Delete quote?','Delete <strong>'+upEsc(q.no)+'</strong> for '+upEsc(qtToOneLine(q.customer))+'?',function(){DB.quotes=qtList().filter(function(x){return x.id!==id;});logAudit('quote_deleted',{quote:q.no});saveDB();renderQuotes();});}
 function renderQuotes(){
   var q=(ge('qt-search').value||'').toLowerCase(),f=ge('qt-filter').value;
   var list=qtList().filter(function(x){var st=qtStatus(x);if(f!=='all'&&st!==f)return false;return !q||(x.no+' '+x.customer+' '+(x.vehicle||'')).toLowerCase().indexOf(q)>=0;}).sort(function(a,b){return String(b.createdAt||b.date).localeCompare(String(a.createdAt||a.date));});
@@ -8870,7 +8879,7 @@ function renderQuotes(){
   var col={Open:'var(--blu)',Sold:'var(--grn)',Expired:'var(--mut)',Declined:'#ff5a5a'};
   ge('qt-body').innerHTML='<div class="tw"><table><thead><tr><th>Quote</th><th>Date</th><th>Customer</th><th>Vehicle</th><th>Items</th><th>Total</th><th>Valid until</th><th>Status</th><th></th></tr></thead><tbody>'+list.map(function(x){
     var st=qtStatus(x),c=col[st]||'var(--mut)',open=(st==='Open');
-    return '<tr><td class="mono" style="font-weight:700">'+upEsc(x.no)+'</td><td class="mono" style="font-size:11px">'+upEsc(x.date)+'</td><td style="font-weight:600">'+upEsc(x.customer)+'</td><td>'+upEsc(x.vehicle||'-')+'</td><td>'+x.items.length+'</td><td class="price">'+fmt(x.total)+'</td><td class="mono" style="font-size:11px">'+upEsc(x.validUntil||'')+'</td>'
+    return '<tr><td class="mono" style="font-weight:700">'+upEsc(x.no)+'</td><td class="mono" style="font-size:11px">'+upEsc(x.date)+'</td><td style="font-weight:600;font-size:12px">'+upEsc(x.customer).replace(/\n/g,'<br>')+'</td><td>'+upEsc(x.vehicle||'-')+'</td><td>'+x.items.length+'</td><td class="price">'+fmt(x.total)+'</td><td class="mono" style="font-size:11px">'+upEsc(x.validUntil||'')+'</td>'
       +'<td><span class="pill" style="border:1px solid '+c+';color:'+c+'">'+st+(x.billNo?' '+upEsc(x.billNo):'')+'</span></td>'
       +'<td style="white-space:nowrap">'+((open||st==='Expired')?'<button class="btn bp bsm" data-qact="load" data-qid="'+x.id+'">Load to POS</button> ':'')
       +'<button class="btn bs bsm" data-qact="edit" data-qid="'+x.id+'" title="Edit customer name, phone, vehicle, validity, note">✏️</button> <button class="btn bs bsm" data-qact="print" data-qid="'+x.id+'">🖨</button> <button class="btn bs bsm" data-qact="wa" data-qid="'+x.id+'">💬</button> '
@@ -9047,7 +9056,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // quotes
   on('qt-new','click',function(){openQuoteModal('__new');});
   on('qt-fromcart','click',function(){if(cart.length)openQuoteModal();else{switchPanel('pos');toast('Add items to the cart, choose the customer, then press 📄 Quote','inf');}});
-  on('qtm-cust','change',qtCustPicked);
+  on('qtm-pick','change',qtCustPicked);
   on('btn-quote','click',function(){openQuoteModal();});
   on('qtm-add-btn','click',function(){qtAddPart(ge('qtm-add').value);});
   on('qtm-add','change',function(){qtAddPart(ge('qtm-add').value);});
