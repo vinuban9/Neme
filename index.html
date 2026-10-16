@@ -7532,7 +7532,7 @@ function dedupeParts(){
   +'[data-theme="light"] #mapp{--mink:#171A1E;--mpaper:#EDEFF2;--mcard:#fff;--mmut:#6B7280;--mnavy:#171A1E;--mamber:#E8451F;--mgrn:#16915A;--mred:#D64545;--mbrd:#D3D7DC}'
   +'body.mobile-mode{background:var(--mpaper,#F5F6F8);display:block!important;height:auto!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'
   +'html.mobile-mode-html{height:auto!important;overflow:auto!important}'
-  +'body.mobile-mode > :not(#mapp):not(#pra):not(#toast):not(.overlay):not(#fb-status):not(#fb-login-ov):not(#lock-screen):not(script):not(style){display:none!important}'
+  +'body.mobile-mode > :not(#mapp):not(#pra):not(#toast):not(#confirm-overlay):not(.overlay):not(#fb-status):not(#fb-login-ov):not(#lock-screen):not(script):not(style){display:none!important}'
   +'body.mobile-mode.unlocked #mapp{display:block}'
   +'#mapp *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}'
   +'#m-head{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--mnavy);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px}'
@@ -9758,12 +9758,43 @@ function crOfferFromInvoice(inv){
     });
   }catch(e){console.warn(e);}
 }
+// Box shown inside the "Invoice Result" window (desktop and phone) to add the invoice to Creditors
+function crInvoiceBox(inv){
+  if(!isOwnerUser())return;
+  var dup=crBills().some(function(b){return inv.supId&&b.supId===inv.supId&&String(b.ref||'')===String(inv.ref||'')&&inv.ref;});
+  var opts=(DB.suppliers||[]).slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));}).map(function(x){return '<option value="'+upEsc(x.id)+'"'+(x.id===inv.supId?' selected':'')+'>'+upEsc(x.name)+'</option>';}).join('');
+  var box=document.createElement('div');box.id='inv-cr-box';
+  box.style.cssText='margin-top:12px;padding:12px;border:2px solid var(--acc);border-radius:6px;background:var(--sur2)';
+  box.innerHTML='<div style="font-weight:700;margin-bottom:8px">📒 Add this invoice to Creditors (unpaid)?</div>'
+    +(dup?'<div style="font-size:12px;color:var(--grn);margin-bottom:6px">✅ This invoice is already in Creditors.</div>':'')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div><label style="font-size:11px">Supplier</label><select id="icr-sup" style="width:100%"><option value="">— pick supplier —</option>'+opts+'</select></div>'
+    +'<div><label style="font-size:11px">Invoice No</label><input id="icr-ref" style="width:100%" value="'+upEsc(inv.ref||'')+'"></div>'
+    +'<div><label style="font-size:11px">Amount (Rs.)</label><input id="icr-amt" type="number" step="0.01" style="width:100%" value="'+(Math.round((inv.total||0)*100)/100)+'"></div>'
+    +'<div><label style="font-size:11px">Credit terms</label><select id="icr-terms" style="width:100%"><option value="0">Due now</option><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="45">45 days</option><option value="60">60 days</option><option value="90">90 days</option></select></div></div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn bp" id="icr-add" style="flex:1">➕ Add to Creditors</button><button class="btn bs" id="icr-skip">Paid already / Skip</button></div>';
+  var host=document.querySelector('#inv-report-ov .modal');
+  if(!host){var ov=document.createElement('div');ov.className='overlay open';ov.id='inv-cr-ov';ov.style.zIndex='1000';ov.innerHTML='<div class="modal" style="max-width:520px"></div>';document.body.appendChild(ov);host=ov.querySelector('.modal');}
+  var okBtn=host.querySelector('button:last-of-type');
+  if(okBtn&&okBtn.parentNode===host&&host.id!=='inv-cr-ov')host.insertBefore(box,okBtn);else host.appendChild(box);
+  var done=function(msg){box.innerHTML='<div style="font-size:13px">'+msg+'</div>';var o=ge('inv-cr-ov');if(o)setTimeout(function(){o.remove();},1200);};
+  ge('icr-skip').onclick=function(){done('Not added to Creditors.');};
+  ge('icr-add').onclick=function(){
+    var sid=ge('icr-sup').value,amt=Math.round((parseFloat(ge('icr-amt').value)||0)*100)/100,ref=ge('icr-ref').value.trim();
+    if(!sid){toast('Pick the supplier','err');return;}if(!(amt>0)){toast('Enter the invoice amount','err');return;}
+    var s=(DB.suppliers||[]).find(function(x){return x.id===sid;});
+    var date=(/^\d{4}-\d{2}-\d{2}$/.test(inv.date||'')?inv.date:crToday()),terms=parseInt(ge('icr-terms').value,10)||0;
+    crBills().push({id:'CR'+Date.now()+Math.floor(Math.random()*1000),supId:sid,supplier:s?s.name:'',ref:ref,amount:amt,date:date,terms:terms,due:crAddDays(date,terms),note:'From scanned invoice',payments:[],createdAt:new Date().toISOString(),createdBy:(window._currentUser||{}).username||''});
+    crSaveAudit('creditor_bill_added',{supplier:s?s.name:'',amount:amt,ref:ref,from:'invoice'});saveDB();
+    done('✅ Added to Creditors: '+upEsc(ref||'(no ref)')+' — '+fmt(amt)+', due '+crAddDays(date,terms));
+  };
+}
 (function(){
   if(typeof finalizeInvoiceSave!=='function')return;
   var _fis=finalizeInvoiceSave;
   finalizeInvoiceSave=function(){
     var n0=(DB.invoices||[]).length,r=_fis.apply(this,arguments);
-    try{var inv=(DB.invoices||[])[n0];if(inv){var info={supId:inv.supplierId,ref:inv.invoiceNo,date:inv.date,total:inv.total};setTimeout(function(){crOfferFromInvoice(info);},1800);}}catch(e){}
+    try{var inv=(DB.invoices||[])[n0];if(inv){var info={supId:inv.supplierId,ref:inv.invoiceNo,date:inv.date,total:inv.total};setTimeout(function(){try{crInvoiceBox(info);}catch(e){console.warn(e);}},300);}}catch(e){console.warn(e);}
     return r;
   };
 })();
