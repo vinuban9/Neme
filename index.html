@@ -2379,7 +2379,7 @@ function tick(){ge('clock').textContent=new Date().toLocaleTimeString('en-US',{h
 setInterval(tick,1000);tick();
 
 // Owner sees everything. Every other account (current and future) is locked out of these panels.
-var OWNER_ONLY_PANELS=['home','bills','reports','creditors','staff','activity'];
+var OWNER_ONLY_PANELS=['home','bills','reports','creditors','staff','activity','suppliers'];
 var OWNER_ONLY_MOBILE_TABS=['sales','reports'];
 function isOwnerUser(){return !!(window._currentUser&&window._currentUser.role==='owner');}
 function canAccessPanel(id){
