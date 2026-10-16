@@ -1845,7 +1845,7 @@ function checkPricesAgainstList(items){
   items.forEach(function(it){
     var norm=partCodeKey(it.name);
     var ref=DB.priceList.find(function(p){return partCodeKey(p.partNo)===norm;});
-    var newPrice=parseFloat(it.price)||0;
+    var newPrice=parseFloat(it.listPrice!=null?it.listPrice:it.price)||0;
     
     if(!ref){
       result.newItems.push({partNo:it.name,price:newPrice});
@@ -5039,6 +5039,8 @@ function handleInvoiceCSVImport(event) {
       const colPart = header.findIndex(h => h.indexOf('part') !== -1 || h.indexOf('name') !== -1 || h.indexOf('product') !== -1);
       const colQty = header.findIndex(h => h.indexOf('qty') !== -1 || h.indexOf('quantity') !== -1);
       const colPrice = header.findIndex(h => h.indexOf('price') !== -1 || h.indexOf('cost') !== -1);
+      const colDisc = header.findIndex(h => h.indexOf('disc') !== -1);
+      const colNet = header.findIndex((h, i) => i !== colPrice && (h.indexOf('net') !== -1 || h === 'amount' || h === 'linetotal' || h === 'total' || h === 'value'));
       
       if (colPart === -1 || colQty === -1 || colPrice === -1) {
         toast('❌ CSV must have Part_No, Qty, Price columns', 'err');
@@ -5069,9 +5071,14 @@ function handleInvoiceCSVImport(event) {
         if (qty <= 0 || qty > 9999) { console.warn('Row '+i+': Invalid qty'); invalidCount++; continue; }
         if (price <= 0 || price > 999999) { console.warn('Row '+i+': Invalid price'); invalidCount++; continue; }
         
-        invoiceData.items.push({ name: name.toUpperCase(), qty: qty, price: price });
+        const dRaw = colDisc !== -1 ? String(cols[colDisc] || '') : '';
+        invoiceData.items.push({ name: name.toUpperCase(), qty: qty, price: price,
+          discountPct: (dRaw.indexOf('%') !== -1 || (invNum(dRaw) > 0 && invNum(dRaw) <= 75)) ? invNum(dRaw) : 0,
+          discountAmount: (dRaw && dRaw.indexOf('%') === -1 && invNum(dRaw) > 75) ? invNum(dRaw) : 0,
+          amount: colNet !== -1 ? invNum(cols[colNet]) : 0 });
       }
       
+      invApplyDiscounts(invoiceData);
       if (invoiceData.items.length === 0) {
         toast('❌ No valid items found in CSV'+(invalidCount?'. '+invalidCount+' rows had errors':''), 'err');
         event.target.value = '';
@@ -5335,15 +5342,23 @@ Respond with ONLY a valid JSON object (no markdown, no backticks, no explanation
   "invoiceNo": "the invoice number",
   "date": "invoice date as written",
   "company": "supplier company name",
-  "items": [ { "name": "part number/code", "desc": "item description text", "qty": 1, "price": 9850 } ]
+  "items": [ { "name": "part number/code", "desc": "item description text", "qty": 1, "price": 9850, "discountPct": 0, "discountAmount": 0, "amount": 9850 } ],
+  "discountPct": 0,
+  "discountAmount": 0,
+  "grandTotal": 0
 }
 Rules:
 - Extract EVERY line item in the items table.
 - name = the part number / item code column (read carefully).
 - desc = the item description/name column text (e.g. "OIL FILTER TOYOTA COROLLA", "BRAKE PAD FRONT"). If the invoice has no separate description column, use "".
 - qty = quantity as integer.
-- price = unit price as number (no commas, no currency symbols).
-- If a field cannot be read, use "" for text or skip the item.`;
+- price = unit price as printed (the list/MRP price BEFORE any discount), number only (no commas, no currency symbols).
+- discountPct = the discount % shown on THAT line (e.g. "10%", "Disc 15"), else 0.
+- discountAmount = the discount in rupees shown on THAT line, else 0.
+- amount = the line total in the Amount/Value/Net column for that line (after its line discount), number only; 0 if there is no such column.
+- Top-level discountPct / discountAmount = a discount applied to the WHOLE invoice (e.g. "Less 10% discount", "Discount Rs. 2,500" near the totals). 0 if none. Do not repeat line discounts here.
+- grandTotal = the final total payable printed on the invoice (after all discounts), 0 if not visible.
+- If a field cannot be read, use "" for text or 0 for numbers, or skip the item.`;
 
   const body = {
     contents: [{
@@ -5433,9 +5448,11 @@ Rules:
           date: String(parsed.date || '').trim(),
           company: String(parsed.company || '').trim(),
           items: (parsed.items || []).filter(function (it) { return it && it.name; }).map(function (it) {
-            return { name: String(it.name).trim().toUpperCase(), desc: String(it.desc || '').trim(), qty: parseInt(it.qty) || 1, price: parseFloat(it.price) || 0 };
-          })
+            return { name: String(it.name).trim().toUpperCase(), desc: String(it.desc || '').trim(), qty: parseInt(it.qty) || 1, price: invNum(it.price), discountPct: invNum(it.discountPct), discountAmount: invNum(it.discountAmount), amount: invNum(it.amount) };
+          }),
+          discountPct: invNum(parsed.discountPct), discountAmount: invNum(parsed.discountAmount), grandTotal: invNum(parsed.grandTotal)
         };
+        invApplyDiscounts(result);
         // Model worked but read nothing useful → usually a hard/blurry image
         if (!result.invoiceNo && !result.company && result.items.length === 0) {
           lastErr = 'image too unclear to read any data';
@@ -5457,6 +5474,31 @@ Rules:
   return null;
 }
 
+function invNum(v){var n=parseFloat(String(v==null?'':v).replace(/,/g,'').replace(/[^0-9.\-]/g,''));return isFinite(n)?n:0;}
+// Turn supplier list prices into the REAL cost after line discounts and any whole-invoice discount.
+// Keeps the printed price in item.listPrice (used for the price-list comparison).
+function invApplyDiscounts(data){
+  if(!data||!data.items)return data;
+  var r2=function(n){return Math.round(n*100)/100;};
+  data.items.forEach(function(it){
+    var qty=Math.max(1,parseInt(it.qty)||1),list=invNum(it.price),net=list,why='';
+    var amt=invNum(it.amount),dp=invNum(it.discountPct),da=invNum(it.discountAmount);
+    if(dp>0&&dp<100){net=list*(1-dp/100);why=dp+'% off';}
+    else if(da>0&&da<list*qty){net=(list*qty-da)/qty;why='Rs.'+da+' off';}
+    if(amt>0&&list>0){var fromAmt=amt/qty;
+      // trust the printed line amount when it is a sensible discounted value
+      var amtIsGross=why&&Math.abs(fromAmt-list)<=list*0.005; // Amount column shows the price before the line discount
+      if(!amtIsGross&&fromAmt<=list*1.001&&fromAmt>=list*0.2){if(Math.abs(fromAmt-net)>0.01&&fromAmt<list-0.01&&!why)why=Math.round((1-fromAmt/list)*1000)/10+'% off';net=fromAmt;}}
+    it.listPrice=list;it.price=r2(net);it.discNote=why;
+  });
+  var gross=data.items.reduce(function(a,i){return a+i.price*(parseInt(i.qty)||1);},0);
+  var bp=invNum(data.discountPct),ba=invNum(data.discountAmount),gt=invNum(data.grandTotal),factor=1;
+  if(bp>0&&bp<100)factor=1-bp/100;
+  else if(ba>0&&gross>0&&ba<gross)factor=(gross-ba)/gross;
+  else if(gt>0&&gross>0&&gt<gross*0.999&&gt>=gross*0.7)factor=gt/gross; // only total printed: spread the difference
+  if(factor<0.9999){data.items.forEach(function(it){it.price=r2(it.price*factor);it.discNote=(it.discNote?it.discNote+' + ':'')+'bill '+Math.round((1-factor)*1000)/10+'% off';});data.billDiscountFactor=factor;}
+  return data;
+}
 function extractSimpleInvoiceData(text) {
   const data = {
     invoiceNo: '',
@@ -6210,7 +6252,7 @@ function showInvoiceResults(imageData, data) {
                     <input type="number" id="item-qty-${idx}" value="${item.qty}" min="1" style="width:100%;padding:4px;border:1px solid var(--brd);border-radius:3px;font-size:11px;text-align:center;">
                   </td>
                   <td style="padding:8px 10px;text-align:center">
-                    <input type="number" id="item-price-${idx}" value="${item.price}" step="0.01" min="0" style="width:100%;padding:4px;border:1px solid var(--brd);border-radius:3px;font-size:11px;text-align:center;">
+                    <input type="number" id="item-price-${idx}" value="${item.price}" step="0.01" min="0" style="width:100%;padding:4px;border:1px solid var(--brd);border-radius:3px;font-size:11px;text-align:center;">${(item.listPrice && Math.abs(item.listPrice - item.price) > 0.009) ? '<div style="font-size:10px;color:var(--grn);margin-top:2px" title="Cost after discount">list ' + item.listPrice + ' → net (' + (item.discNote || 'discount') + ')</div>' : ''}
                   </td>
                   <td style="padding:8px 10px;text-align:center">
                     <button onclick="deleteInvoiceItem(${idx})" style="background:#d32f2f;color:white;border:none;border-radius:3px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:bold">✖</button>
