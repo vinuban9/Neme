@@ -793,9 +793,10 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div class="fg full" id="crp-info" style="font-size:12px;color:var(--mut)"></div>
     <div class="fg"><label>Amount Paid (Rs.) *</label><input id="crp-amt" type="number" step="0.01" min="0"></div>
     <div class="fg"><label>Date</label><input id="crp-date" type="date"></div>
-    <div class="fg"><label>Method</label><select id="crp-method"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option><option>Card</option><option>Other</option></select></div>
+    <div class="fg"><label>Method</label><select id="crp-method"><option>Cash</option><option>Bank Deposit</option><option>Bank Transfer</option><option>Cheque</option><option>Card</option><option>Other</option></select></div>
     <div class="fg"><label>Apply to</label><select id="crp-bill"></select></div>
-    <div class="fg full"><label>Note / Cheque no.</label><input id="crp-note" placeholder="optional"></div>
+    <div class="fg full" id="crp-bankbox" style="display:none;background:var(--sur2);border-radius:4px;padding:8px 10px"></div>
+    <div class="fg full"><label>Note / Cheque no. / Bank slip ref</label><input id="crp-note" placeholder="optional"></div>
   </div>
   <div class="ma"><button class="btn bs" data-close="crpay-ov">Cancel</button><button class="btn bs" id="crp-full">Pay Full Balance</button><button class="btn bp" id="crp-save">Record Payment</button></div>
 </div></div>
@@ -814,6 +815,10 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <div class="fg"><label>Phone</label><input id="s-ph"></div>
     <div class="fg"><label>Email</label><input id="s-em"></div>
     <div class="fg full"><label>Address</label><input id="s-addr"></div>
+    <div class="fg"><label>&#127974; Bank</label><input id="s-bank" placeholder="e.g. Commercial Bank"></div>
+    <div class="fg"><label>Branch</label><input id="s-branch" placeholder="e.g. Nuwara Eliya"></div>
+    <div class="fg"><label>Account Name</label><input id="s-accname"></div>
+    <div class="fg"><label>Account Number</label><input id="s-accno" inputmode="numeric"></div>
     <div class="fg full"><label>Notes</label><textarea id="s-notes" rows="2"></textarea></div>
   </div>
   <div class="ma"><button class="btn bs" data-close="sup-ov">Cancel</button><button class="btn bp" id="btn-save-sup">Save Supplier</button></div>
@@ -3229,6 +3234,7 @@ function renderSupTable(){
     h+='<tr><td style="font-weight:600">'+s.name+'</td><td>'+(s.contact||'-')+'</td><td class="mono">'+(s.phone||'-')+'</td>'
       +'<td><button class="btn bs bsm sup-edit" data-idx="'+i+'">Edit</button> '
       +'<button class="btn bp bsm sup-inv" data-sid="'+s.id+'" '+(invCount===0?'style="opacity:.5"':'')+'>📄 Invoices ('+invCount+')</button> '
+      +'<button class="btn bs bsm" onclick="crEditSupplierBank(\''+s.id+'\')" title="Bank account for deposits">&#127974; '+(s.accNo?'Bank':'Add Bank')+'</button> '
       +'<button class="btn bd bsm sup-del" data-sid="'+s.id+'">Delete</button></td></tr>';
   });
   ge('sup-body').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:16px">No suppliers</td></tr>';
@@ -3312,14 +3318,16 @@ function toggleSupInvDetail(idx) {
 }
 function openSupModal(idx){
   editSup=idx;
-  if(idx===-1){ge('sup-title').textContent='Add Supplier';['s-name','s-con','s-ph','s-em','s-addr','s-notes'].forEach(function(id){ge(id).value='';});}
-  else{var s=DB.suppliers[idx];ge('sup-title').textContent='Edit Supplier';ge('s-name').value=s.name;ge('s-con').value=s.contact||'';ge('s-ph').value=s.phone||'';ge('s-em').value=s.email||'';ge('s-addr').value=s.addr||'';ge('s-notes').value=s.notes||'';}
+  if(idx===-1){ge('sup-title').textContent='Add Supplier';['s-name','s-con','s-ph','s-em','s-addr','s-notes','s-bank','s-branch','s-accname','s-accno'].forEach(function(id){ge(id).value='';});}
+  else{var s=DB.suppliers[idx];ge('sup-title').textContent='Edit Supplier';ge('s-name').value=s.name;ge('s-con').value=s.contact||'';ge('s-ph').value=s.phone||'';ge('s-em').value=s.email||'';ge('s-addr').value=s.addr||'';ge('s-notes').value=s.notes||'';ge('s-bank').value=s.bank||'';ge('s-branch').value=s.branch||'';ge('s-accname').value=s.accName||'';ge('s-accno').value=s.accNo||'';}
   openOv('sup-ov');
 }
 function saveSup(){
   var nm=ge('s-name').value.trim();if(!nm){toast('Name required','err');return;}
   var s={id:editSup===-1?'S'+Date.now():DB.suppliers[editSup].id,name:nm,contact:ge('s-con').value.trim(),
-    phone:ge('s-ph').value.trim(),email:ge('s-em').value.trim(),addr:ge('s-addr').value.trim(),notes:ge('s-notes').value.trim()};
+    phone:ge('s-ph').value.trim(),email:ge('s-em').value.trim(),addr:ge('s-addr').value.trim(),notes:ge('s-notes').value.trim(),
+    bank:ge('s-bank').value.trim(),branch:ge('s-branch').value.trim(),accName:ge('s-accname').value.trim(),accNo:ge('s-accno').value.replace(/\s+/g,'').trim()};
+  if(editSup!==-1)s=Object.assign({},DB.suppliers[editSup],s);
   if(editSup===-1)DB.suppliers.push(s);else DB.suppliers[editSup]=s;
   saveDB();closeOv('sup-ov');renderSupTable();toast('Supplier saved!','ok');
 }
@@ -8105,7 +8113,7 @@ function crViewPayments(q){
   var h='<div class="tw"><table><thead><tr><th>Date</th><th>Supplier</th><th>Bill Ref</th><th>Method</th><th>Note</th><th>By</th><th>Amount</th><th></th></tr></thead><tbody>';
   list.forEach(function(x){tot+=Number(x.p.amount)||0;
     h+='<tr><td class="mono" style="font-size:11px">'+crEsc(x.p.date)+'</td><td style="font-weight:600">'+crEsc(crSupName(x.b.supId,x.b.supplier))+'</td><td class="mono" style="font-size:11px">'+crEsc(x.b.ref||'-')+'</td><td>'+crEsc(x.p.method||'-')+'</td><td>'+crEsc(x.p.note||'')+'</td><td>'+crEsc(x.p.by||'')+'</td><td class="price">'+fmt(x.p.amount)+'</td>'
-      +'<td style="white-space:nowrap"><button class="btn bs bsm" data-cract="editpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Edit this payment">&#9999;&#65039;</button> <button class="btn bd bsm" data-cract="delpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Undo this payment">&#8630;</button></td></tr>';});
+      +'<td style="white-space:nowrap">'+(/Bank/.test(x.p.method||'')?'<button class="btn bs bsm" data-bkact="slip" data-batch="'+(x.p.batch||x.p.id)+'" title="Print deposit slip">&#128424;</button> <button class="btn bs bsm" data-bkact="advice" data-batch="'+(x.p.batch||x.p.id)+'" title="Send payment advice PDF">&#128172;</button> ':'')+'<button class="btn bs bsm" data-cract="editpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Edit this payment">&#9999;&#65039;</button> <button class="btn bd bsm" data-cract="delpay" data-bid="'+x.b.id+'" data-pid="'+x.p.id+'" title="Undo this payment">&#8630;</button></td></tr>';});
   return h+'<tr style="font-weight:700;background:var(--sur2)"><td colspan="6">TOTAL PAID</td><td class="price">'+fmt(tot)+'</td><td></td></tr></tbody></table></div>';
 }
 function crViewCustomers(q){
@@ -8192,6 +8200,7 @@ function openCrPay(supId,billId){
   ge('crp-date').value=crToday();ge('crp-note').value='';ge('crp-method').value='Cash';
   crPayRefresh(billId);
   openOv('crpay-ov');
+  if(typeof crBankBox==='function')crBankBox();
 }
 function crPayRefresh(billId){
   var sid=ge('crp-sup').value;
@@ -8209,18 +8218,19 @@ function saveCrPay(){
   var avail=targets.reduce(function(a,b){return a+crBal(b);},0);
   if(!(amt>0)){toast('Enter the amount paid','err');return;}
   if(amt>avail+0.005){toast('Amount is more than the '+fmt(avail)+' owed','err');return;}
-  var u=window._currentUser||{},left=amt,date=ge('crp-date').value||crToday(),method=ge('crp-method').value,note=ge('crp-note').value.trim(),n=0;
+  var u=window._currentUser||{},left=amt,date=ge('crp-date').value||crToday(),method=ge('crp-method').value,note=ge('crp-note').value.trim(),n=0,batch='CB'+Date.now();
   targets.forEach(function(b){
     if(left<=0.004)return;
     var pay=Math.min(left,crBal(b));
     b.payments=b.payments||[];
-    b.payments.push({id:'CP'+Date.now()+'_'+(n++),date:date,amount:Math.round(pay*100)/100,method:method,note:note,by:u.username||''});
+    b.payments.push({id:'CP'+Date.now()+'_'+(n++),batch:batch,date:date,amount:Math.round(pay*100)/100,method:method,note:note,by:u.username||''});
     left=Math.round((left-pay)*100)/100;
   });
   crSaveAudit('creditor_payment',{supplier:crSupName(sid),amount:amt,method:method});
   saveDB();closeOv('crpay-ov');renderCreditors();
   if(ge('crdet-ov').classList.contains('open'))crShowLedger(CR.supId);
   toast('✅ Recorded '+fmt(amt)+' paid to '+crSupName(sid),'ok');
+  if(/Bank/.test(method)&&typeof crAfterBankPay==='function')crAfterBankPay(batch);
 }
 function crDeletePayment(billId,payId){
   var b=crBills().find(function(x){return x.id===billId;});if(!b)return;
@@ -9654,6 +9664,122 @@ function qtWhatsApp(id){
   catch(e){console.error(e);toast('❌ Could not make the PDF: '+e.message,'err');}
 }
 function qtDownloadPdf(id){var q=qtFind(id);if(!q||!pdfReady())return;pdfQuote(q).save('Quotation-'+q.no+'.pdf');}
+
+// ===== SUPPLIER BANK PAYMENTS: deposit slip, payment advice PDF, invoice -> creditors =====
+function lkrWords(amount){
+  var ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  var tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function h(n){var s='';if(n>=100){s+=ones[Math.floor(n/100)]+' Hundred';n%=100;if(n)s+=' and ';}if(n>=20){s+=tens[Math.floor(n/10)];if(n%10)s+=' '+ones[n%10];}else if(n)s+=ones[n];return s;}
+  function w(n){if(n===0)return 'Zero';var out=[],u=[[1e9,'Billion'],[1e6,'Million'],[1e3,'Thousand']];u.forEach(function(x){if(n>=x[0]){out.push(h(Math.floor(n/x[0]))+' '+x[1]);n%=x[0];}});if(n)out.push(h(n));return out.join(' ');}
+  var r=Math.floor(Math.round(amount*100)/100),c=Math.round((amount-r)*100);
+  return 'Rupees '+w(r)+(c?' and Cents '+w(c):'')+' Only';
+}
+function supBank(s){s=s||{};return {bank:s.bank||'',branch:s.branch||'',accName:s.accName||s.name||'',accNo:s.accNo||''};}
+function crBatchPayments(key){
+  var out=[];crBills().forEach(function(b){(b.payments||[]).forEach(function(p){if((p.batch||p.id)===key)out.push({b:b,p:p});});});return out;
+}
+function crBankBox(){
+  var box=ge('crp-bankbox');if(!box)return;
+  var m=ge('crp-method').value,show=/Bank/.test(m),sid=ge('crp-sup').value;
+  if(!show){box.style.display='none';return;}
+  var s=(DB.suppliers||[]).find(function(x){return x.id===sid;}),bk=supBank(s);
+  box.style.display='';
+  box.innerHTML=bk.accNo?('<div style="font-size:12px;line-height:1.6">🏦 <strong>'+upEsc(bk.bank||'(bank not set)')+'</strong>'+(bk.branch?' — '+upEsc(bk.branch):'')+'<br>A/C Name: <strong>'+upEsc(bk.accName)+'</strong><br>A/C No: <strong class="mono" style="font-size:15px;letter-spacing:1px">'+upEsc(bk.accNo)+'</strong> <button type="button" class="btn bs bsm" id="crp-copyacc">📋 Copy</button></div>')
+    :'<div style="font-size:12px;color:#ff5a5a">⚠️ No bank account saved for this supplier. <button type="button" class="btn bs bsm" id="crp-editbank">Add bank details</button></div>';
+}
+function crEditSupplierBank(sid){
+  var s=(DB.suppliers||[]).find(function(x){return x.id===sid;});if(!s){toast('Pick a supplier first','err');return;}
+  upForm('🏦 Bank details — '+s.name,[{id:'bank',label:'Bank',value:s.bank||''},{id:'branch',label:'Branch',value:s.branch||''},{id:'accName',label:'Account Name',value:s.accName||s.name},{id:'accNo',label:'Account Number',value:s.accNo||''}],function(v){
+    s.bank=v.bank.trim();s.branch=v.branch.trim();s.accName=v.accName.trim();s.accNo=v.accNo.replace(/\s+/g,'').trim();saveDB();crBankBox();toast('✅ Bank details saved','ok');});
+}
+function crAfterBankPay(batch){
+  var rows=crBatchPayments(batch);if(!rows.length)return;
+  var tot=rows.reduce(function(a,x){return a+x.p.amount;},0);
+  upInfo('🏦 Bank payment recorded — '+fmt(tot),'<div style="margin-bottom:12px">What next?</div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn bp" data-bkact="slip" data-batch="'+upEsc(batch)+'">🖨 Print Deposit Slip</button>'
+    +'<button class="btn bs" data-bkact="advice" data-batch="'+upEsc(batch)+'">💬 Send Payment Advice (PDF)</button></div>'
+    +'<div class="muted" style="font-size:12px;margin-top:10px">The slip is pre-filled with the supplier\'s bank, account number, amount in figures and words, and the invoice numbers. After depositing, add the bank slip / reference number with ✏️ in Payment History.</div>');
+}
+function crSlipHtml(batch,copy){
+  var rows=crBatchPayments(batch);if(!rows.length)return '';
+  var b0=rows[0].b,p0=rows[0].p,s=(DB.suppliers||[]).find(function(x){return x.id===b0.supId;})||{name:b0.supplier},bk=supBank(s),sh=upShop();
+  var tot=rows.reduce(function(a,x){return a+x.p.amount;},0),refs=rows.map(function(x){return x.b.ref||'(no ref)';}).join(', ');
+  var digits=String(bk.accNo||'').split('').map(function(ch){return '<span class="dg">'+upEsc(ch)+'</span>';}).join('')||'<span class="muted">________________________</span>';
+  return '<div class="slip"><div class="hd"><div><b>CASH / CHEQUE DEPOSIT</b><br><span class="sm">'+copy+'</span></div><div class="r"><b>'+upEsc(bk.bank||'Bank: ______________')+'</b><br><span class="sm">Branch: '+upEsc(bk.branch||'______________')+'</span></div></div>'
+    +'<table><tr><td class="k">Date</td><td>'+upEsc(p0.date)+'</td></tr>'
+    +'<tr><td class="k">Account Name</td><td><b>'+upEsc(bk.accName)+'</b></td></tr>'
+    +'<tr><td class="k">Account No.</td><td>'+digits+'</td></tr>'
+    +'<tr><td class="k">Amount (Rs.)</td><td><b style="font-size:16px">'+Number(tot).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})+'</b></td></tr>'
+    +'<tr><td class="k">Amount in words</td><td>'+upEsc(lkrWords(tot))+'</td></tr>'
+    +'<tr><td class="k">Deposited by</td><td>'+upEsc(sh.name)+' &nbsp; Tel: '+upEsc(sh.phone)+'</td></tr>'
+    +'<tr><td class="k">Reference</td><td>Invoice(s): '+upEsc(refs)+'</td></tr>'
+    +'<tr><td class="k">Cash / Cheque</td><td>Cash: ____________ &nbsp; Cheque No: ____________ Bank: ____________</td></tr></table>'
+    +'<div class="sig"><div>__________________<br>Depositor\'s signature</div><div>__________________<br>Cashier / Bank stamp</div></div></div>';
+}
+function crPrintSlip(batch){
+  var h=crSlipHtml(batch,'Bank copy');if(!h){toast('Payment not found','err');return;}
+  upPrint('Deposit slip',h+'<div class="cut">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>'+crSlipHtml(batch,'Depositor copy'),
+    '@page{size:A4;margin:10mm}body{padding:0}.slip{border:2px solid #000;padding:10px 14px;margin-bottom:6mm}.hd{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding-bottom:6px;margin-bottom:6px}.sm{font-size:11px}'
+    +'.slip table{margin:0}.slip td{border:1px solid #888;padding:6px 8px}.k{width:150px;font-weight:bold;background:#f3f3f3}.dg{display:inline-block;border:1px solid #000;min-width:16px;text-align:center;margin-right:2px;font-family:monospace;font-size:15px;padding:1px 0}.sig{display:flex;justify-content:space-between;margin-top:26px;font-size:12px}.cut{text-align:center;color:#666;margin:2mm 0 6mm}');
+}
+function pdfAdvice(batch){
+  var rows=crBatchPayments(batch);if(!rows.length)return null;
+  var J=window.jspdf.jsPDF,d=new J({unit:'mm',format:'a4'}),M=15,R=195,y=18,sh=pdfShopLines();
+  var b0=rows[0].b,p0=rows[0].p,s=(DB.suppliers||[]).find(function(x){return x.id===b0.supId;})||{name:b0.supplier},bk=supBank(s),tot=rows.reduce(function(a,x){return a+x.p.amount;},0);
+  d.setFont('helvetica','bold');d.setFontSize(16);d.text(sh.name,105,y,{align:'center'});y+=6;d.setFont('helvetica','normal');d.setFontSize(10);d.text(sh.addr,105,y,{align:'center'});y+=5;d.text('Tel: '+sh.phone,105,y,{align:'center'});y+=10;
+  d.setFont('helvetica','bold');d.setFontSize(14);d.text('PAYMENT ADVICE',105,y,{align:'center'});y+=10;d.setFontSize(10);
+  var kv=function(k,v){d.setFont('helvetica','bold');d.text(k,M,y);d.setFont('helvetica','normal');d.splitTextToSize(pdfAscii(v),R-M-45).forEach(function(l,i){d.text(l,M+45,y+i*5);});y+=6;};
+  kv('To:',s.name||'');kv('Date of payment:',p0.date);kv('Paid by:',(p0.method||'Bank Deposit'));
+  if(bk.accNo)kv('Deposited to:',(bk.bank?bk.bank+(bk.branch?' - '+bk.branch:'')+', ':'')+'A/C '+bk.accNo+' ('+bk.accName+')');
+  if(p0.note)kv('Bank ref / slip no:',p0.note);
+  kv('Amount:','Rs. '+pdfNum(tot));kv('In words:',lkrWords(tot));y+=4;
+  d.setFillColor(235,235,235);d.rect(M,y-4.5,R-M,7,'F');d.setFont('helvetica','bold');
+  d.text('Invoice',M+1,y);d.text('Invoice date',M+55,y);d.text('Invoice amount',M+110,y,{align:'right'});d.text('Paid now',M+145,y,{align:'right'});d.text('Balance',R-1,y,{align:'right'});y+=7;d.setFont('helvetica','normal');
+  rows.forEach(function(x){d.text(pdfAscii(x.b.ref||'-'),M+1,y);d.text(pdfAscii(x.b.date||''),M+55,y);d.text(pdfNum(x.b.amount),M+110,y,{align:'right'});d.text(pdfNum(x.p.amount),M+145,y,{align:'right'});d.text(pdfNum(crBal(x.b)),R-1,y,{align:'right'});y+=6;});
+  d.line(M,y-3,R,y-3);d.setFont('helvetica','bold');d.text('TOTAL PAID',M+110,y+2,{align:'right'});d.text(pdfNum(tot),M+145,y+2,{align:'right'});y+=14;
+  d.setFont('helvetica','normal');d.text('Please acknowledge receipt. Thank you.',M,y);
+  return d;
+}
+function crSendAdvice(batch){
+  if(!pdfReady())return;var rows=crBatchPayments(batch);if(!rows.length)return;
+  var s=(DB.suppliers||[]).find(function(x){return x.id===rows[0].b.supId;})||{},tot=rows.reduce(function(a,x){return a+x.p.amount;},0);
+  pdfSend(pdfAdvice(batch),'Payment-Advice-'+String(rows[0].p.date)+'.pdf',s.phone,'Payment of Rs. '+pdfNum(tot)+' made on '+rows[0].p.date+' for invoice(s) '+rows.map(function(x){return x.b.ref||'-';}).join(', ')+'. - '+pdfShopLines().name);
+}
+// Scanned supplier invoice -> offer to add it to Creditors as an unpaid bill
+function crOfferFromInvoice(inv){
+  try{
+    if(!inv||!inv.supId||!(inv.total>0)||!isOwnerUser())return;
+    if(crBills().some(function(b){return b.supId===inv.supId&&String(b.ref||'')===String(inv.ref||'');}))return;
+    var s=(DB.suppliers||[]).find(function(x){return x.id===inv.supId;});
+    showConfirm('Add invoice to Creditors?','Invoice <strong>'+upEsc(inv.ref||'')+'</strong> from <strong>'+upEsc(s?s.name:'supplier')+'</strong> for <strong>'+fmt(inv.total)+'</strong> — add it as an unpaid supplier bill so you can pay it by bank deposit later?',function(){
+      var date=(/^\d{4}-\d{2}-\d{2}$/.test(inv.date||'')?inv.date:crToday()),terms=30;
+      crBills().push({id:'CR'+Date.now()+Math.floor(Math.random()*1000),supId:inv.supId,supplier:s?s.name:'',ref:inv.ref||'',amount:Math.round(inv.total*100)/100,date:date,terms:terms,due:crAddDays(date,terms),note:'From scanned invoice',payments:[],createdAt:new Date().toISOString(),createdBy:(window._currentUser||{}).username||''});
+      crSaveAudit('creditor_bill_added',{supplier:s?s.name:'',amount:inv.total,ref:inv.ref,from:'invoice'});saveDB();toast('✅ Added to Creditors','ok');
+    });
+  }catch(e){console.warn(e);}
+}
+(function(){
+  if(typeof finalizeInvoiceSave!=='function')return;
+  var _fis=finalizeInvoiceSave;
+  finalizeInvoiceSave=function(){
+    var n0=(DB.invoices||[]).length,r=_fis.apply(this,arguments);
+    try{var inv=(DB.invoices||[])[n0];if(inv){var info={supId:inv.supplierId,ref:inv.invoiceNo,date:inv.date,total:inv.total};setTimeout(function(){crOfferFromInvoice(info);},1800);}}catch(e){}
+    return r;
+  };
+})();
+document.addEventListener('DOMContentLoaded',function(){
+  var on=function(id,ev,fn){var el=ge(id);if(el)el.addEventListener(ev,fn);};
+  on('crp-method','change',crBankBox);on('crp-sup','change',crBankBox);
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.id==='crp-copyacc'){var s=(DB.suppliers||[]).find(function(x){return x.id===ge('crp-sup').value;});var a=s&&s.accNo||'';
+      try{navigator.clipboard.writeText(a).then(function(){toast('📋 Account number copied','ok');},function(){prompt('Copy the account number:',a);});}catch(err){prompt('Copy the account number:',a);}}
+    else if(t.id==='crp-editbank')crEditSupplierBank(ge('crp-sup').value);
+    var k=t.closest&&t.closest('[data-bkact]');if(!k)return;
+    var a2=k.getAttribute('data-bkact'),bt=k.getAttribute('data-batch');
+    if(a2==='slip')crPrintSlip(bt);else if(a2==='advice')crSendAdvice(bt);
+  });
+});
 
 // keep the vehicle picker in step with the customer picker
 (function(){var _rcd=renderCustDrop;renderCustDrop=function(){var r=_rcd.apply(this,arguments);try{vehRefresh();}catch(e){}return r;};})();
