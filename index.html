@@ -295,7 +295,8 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
       <select id="cart-veh" style="width:100%;margin-bottom:8px"><option value="">&#128663; No vehicle</option></select>
       <div class="ctots">
         <div class="crow"><span>Subtotal</span><span class="mono" id="ct-sub">Rs. 0.00</span></div>
-        <div class="crow"><span>Discount</span><span style="display:flex;align-items:center;gap:4px"><input id="ct-disc" type="number" min="0" max="100" value="0" style="width:48px;padding:3px 5px;text-align:center">%</span></div>
+        <div class="crow"><span>Discount</span><span style="display:flex;align-items:center;gap:4px"><input id="ct-disc" type="number" min="0" max="100" value="0" style="width:48px;padding:3px 5px;text-align:center">%<span class="mono" id="ct-da" style="margin-left:6px;color:var(--grn)"></span></span></div>
+        <div class="crow" id="ct-ro-row" style="display:none"><span>Round off</span><span class="mono" id="ct-ro"></span></div>
         <div class="crow tot"><span>TOTAL</span><span class="mono" id="ct-total" style="font-size:16px;color:var(--acc)">Rs. 0.00</span></div>
       </div>
       <div class="pacts">
@@ -2690,16 +2691,18 @@ function recalcCart(){
       discVal=Math.round(discVal*100)/100;
     }
     
-    // Step 1: Calculate the raw total after the entered discount
-    var rawTot = sub - (sub * discVal / 100);
+    // Step 1: the discount is EXACTLY the entered % of the subtotal
+    var da = Math.round(sub * discVal / 100 * 100) / 100;
+    var afterDisc = Math.round((sub - da) * 100) / 100;
     
-    // Step 2: Round the total to the NEAREST 10 (256->260, 252->250, 255->260)
-    var tot = Math.round(rawTot / 10) * 10;
-    
-    // Step 3: Recalculate the actual discount amount & percentage to match rounded total
-    var da = sub - tot;                                  // actual rupees discounted
-    var effectiveDisc = sub > 0 ? (da / sub * 100) : 0;  // effective % that yields rounded total
-    effectiveDisc = Math.round(effectiveDisc * 100) / 100; // round % to 2 decimals
+    // Step 2: round the bill to the nearest Rs.10 (shown separately as "Round off")
+    var rounding = !(DB.settings && DB.settings.roundingEnabled === false);
+    var tot = rounding ? Math.round(afterDisc / 10) * 10 : afterDisc;
+    var roundOff = Math.round((tot - afterDisc) * 100) / 100;
+    var effectiveDisc = discVal;
+    var roRow = ge('ct-ro-row');
+    if(roRow){ roRow.style.display = Math.abs(roundOff) >= 0.01 ? 'flex' : 'none'; if(ge('ct-ro')) ge('ct-ro').textContent = (roundOff>0?'+':'') + Number(roundOff).toFixed(2); }
+    if(ge('ct-da')) ge('ct-da').textContent = da>0 ? '-'+fmt(da) : '';
     
     // Safely update display elements
     var ctSub = ge('ct-sub');
@@ -2717,7 +2720,7 @@ function recalcCart(){
       }
     }
     
-    return{sub:sub,da:da,tax:0,tot:tot,disc:effectiveDisc,enteredDisc:discVal};
+    return{sub:sub,da:da,tax:0,tot:tot,disc:effectiveDisc,enteredDisc:discVal,roundOff:roundOff};
   } catch(e) {
     console.error('Error in recalcCart:', e);
     return {sub:0,da:0,tax:0,tot:0,disc:0};
@@ -9590,7 +9593,8 @@ function pdfReceipt(s){
   var row=function(k,v,b){if(b){d.setFont('helvetica','bold');d.setFontSize(11);}d.text(k,M,y);d.text(v,R,y,{align:'right'});if(b){d.setFont('helvetica','normal');d.setFontSize(9);}y+=b?5.5:lh;};
   row('Subtotal:',pdfNum(s.sub));
   var da=typeof s.da==='number'?s.da:(s.sub*(s.disc||0)/100);
-  if(s.disc>0||da>0)row('Discount:','-'+pdfNum(da));
+  if(s.disc>0||da>0)row('Discount'+(s.disc>0?' ('+Number(s.disc).toFixed(2).replace(/\.00$/,'')+'%)':'')+':','-'+pdfNum(da));
+  var ro=Math.round((s.total-(s.sub-da))*100)/100;if(Math.abs(ro)>=0.01)row('Round off:',(ro>0?'+':'')+pdfNum(ro));
   d.line(M,y-2.5,R,y-2.5);y+=1;
   row('TOTAL (Rs.):',pdfNum(s.total),true);
   dash();d.setFontSize(9);
