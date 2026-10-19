@@ -227,6 +227,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="tnav" data-panel="pricelist">&#128176; Price List</button>
     <button class="tnav" data-panel="reports">&#128202; Reports</button>
     <button class="tnav" data-panel="vinsearch">&#128663; VIN Search</button>
+    <button class="tnav" data-panel="partid">&#129513; Part ID</button>
     <button class="tnav" data-panel="quotes" id="tnav-quotes">&#128196; Quotes</button>
     <button class="tnav" data-panel="activity" id="tnav-activity" style="display:none">&#128220; Activity</button>
     <button class="tnav" data-panel="debtors" id="tnav-debtors">&#128181; Debtors</button>
@@ -586,6 +587,15 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-partid">
+  <div class="ph">
+    <div class="pt">&#129513; Part ID - identify from photo</div>
+  </div>
+  <div class="pb">
+    <div id="pid-host"></div>
   </div>
 </div>
 
@@ -9911,6 +9921,628 @@ function invDupText(d){return 'Invoice <strong>'+upEsc(d.invoiceNo||d.number||''
 
 // keep the vehicle picker in step with the customer picker
 (function(){var _rcd=renderCustDrop;renderCustDrop=function(){var r=_rcd.apply(this,arguments);try{vehRefresh();}catch(e){}return r;};})();
+
+</script>
+<script>
+// ===== 🧩 PART ID: identify a customer's sample part from photos (FREE Gemini) =====
+// Flow: take 1-3 photos -> Gemini reads every stamped/printed number, names the part,
+// suggests OEM + cross-reference numbers -> we match ALL of them against DB.parts so an
+// equivalent from a different brand still shows up -> optional live Google check.
+(function(){
+  var PID={photos:[],result:null,verify:null,busy:false,histKey:'neme_pid_history'};
+  window.PID=PID;
+  function $p(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function isMob(){return document.body.classList.contains('mobile-mode');}
+  function money(n){n=Number(n)||0;return 'Rs. '+n.toLocaleString('en-LK',{maximumFractionDigits:0});}
+  function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
+  function hasDigit(s){return /\d/.test(s);}
+
+  /* ---------- styles ---------- */
+  var css=document.createElement('style');
+  css.textContent=''
+  +'#pid-root{max-width:880px;margin:0 auto;display:grid;gap:14px;color:var(--ink)}'
+  +'#pid-root .pid-card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}'
+  +'#pid-root .pid-h{font-family:Rajdhani,sans-serif;font-weight:700;font-size:16px;letter-spacing:.02em;margin:0}'
+  +'#pid-root .pid-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}'
+  +'#pid-root .pid-mut{color:var(--mut);font-size:12.5px;line-height:1.55}'
+  +'#pid-root .pid-shots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}'
+  +'#pid-root .pid-shot{position:relative;aspect-ratio:1;border:1.5px dashed var(--brd);border-radius:8px;background:var(--sur2);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:var(--mut);font-size:12px;cursor:pointer;overflow:hidden;text-align:center;padding:4px}'
+  +'#pid-root .pid-shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}'
+  +'#pid-root .pid-shot .x{position:absolute;top:4px;right:4px;z-index:2;width:26px;height:26px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:14px;cursor:pointer}'
+  +'#pid-root .pid-shot .big{font-size:24px}'
+  +'#pid-root .pid-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}'
+  +'#pid-root .pid-row .btn{flex:0 0 auto}'
+  +'#pid-root a.btn{text-decoration:none}'
+  +'#pid-root input.pid-in{background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:10px 11px;color:var(--ink);font-size:14px;width:100%;min-width:0;font-family:inherit}'
+  +'#pid-root .pid-go{width:100%;justify-content:center;padding:13px;font-size:15px}'
+  +'#pid-root .pid-chips{display:flex;flex-wrap:wrap;gap:6px}'
+  +'#pid-root .pid-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--brd);background:var(--sur2);border-radius:999px;padding:5px 10px;font-size:12.5px;cursor:pointer;color:var(--ink)}'
+  +'#pid-root .pid-chip b{font-family:"DM Mono",monospace;letter-spacing:.02em}'
+  +'#pid-root .pid-chip small{color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}'
+  +'#pid-root .pid-chip.hit{border-color:var(--grn);box-shadow:inset 0 0 0 1px var(--grn)}'
+  +'#pid-root .pid-chip.low{opacity:.75;border-style:dashed}'
+  +'#pid-root .pid-type{font-family:Rajdhani,sans-serif;font-size:22px;font-weight:700;line-height:1.15}'
+  +'#pid-root .pid-conf{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}'
+  +'#pid-root .pid-conf.high{background:color-mix(in srgb,var(--grn) 18%,transparent);color:var(--grn)}'
+  +'#pid-root .pid-conf.medium{background:color-mix(in srgb,var(--yel) 18%,transparent);color:var(--yel)}'
+  +'#pid-root .pid-conf.low{background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc)}'
+  +'#pid-root .pid-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border-top:1px solid var(--brd);align-items:center}'
+  +'#pid-root .pid-item:first-of-type{border-top:0}'
+  +'#pid-root .pid-item .nm{font-weight:600;font-size:13.5px;word-break:break-word}'
+  +'#pid-root .pid-item .meta{font-size:11.5px;color:var(--mut);display:flex;gap:8px;flex-wrap:wrap}'
+  +'#pid-root .pid-item .why{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 7px;border-radius:999px;background:var(--sur2);border:1px solid var(--brd);color:var(--mut)}'
+  +'#pid-root .pid-item .why.exact{color:var(--grn);border-color:var(--grn)}'
+  +'#pid-root .pid-item .why.xref{color:var(--blu);border-color:var(--blu)}'
+  +'#pid-root .pid-q{font-family:"DM Mono",monospace;font-weight:700;font-size:13px;padding:3px 9px;border-radius:5px;text-align:center;min-width:52px}'
+  +'#pid-root .pid-q.ok{background:color-mix(in srgb,var(--grn) 18%,transparent);color:var(--grn)}'
+  +'#pid-root .pid-q.out{background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--acc)}'
+  +'#pid-root .pid-acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}'
+  +'#pid-root .pid-acts .btn{padding:6px 11px;font-size:12px;flex:0 0 auto}'
+  +'#pid-root ul.pid-ul{margin:0;padding-left:18px;font-size:13px;line-height:1.6}'
+  +'#pid-root .pid-hist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}'
+  +'#pid-root .pid-hcard{display:flex;gap:8px;align-items:center;border:1px solid var(--brd);border-radius:8px;padding:6px;background:var(--sur2);cursor:pointer;text-align:left;color:var(--ink);font:inherit;font-size:12px;min-width:0}'
+  +'#pid-root .pid-hcard img{width:42px;height:42px;object-fit:cover;border-radius:5px;flex:0 0 auto}'
+  +'#pid-root .pid-hcard span{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+  +'#pid-root .pid-spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:pidspin .8s linear infinite}'
+  +'@keyframes pidspin{to{transform:rotate(360deg)}}'
+  +'#pid-root .pid-src a{color:var(--blu);font-size:12px;word-break:break-all}'
+  +'#pid-root .pid-warn{background:color-mix(in srgb,var(--yel) 12%,transparent);border:1px solid color-mix(in srgb,var(--yel) 40%,transparent);border-radius:6px;padding:9px 11px;font-size:12px;line-height:1.55}'
+  +'#pid-ov{position:fixed;inset:0;z-index:300;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 30px)}'
+  +'#pid-ov .pid-ovtop{display:flex;justify-content:space-between;align-items:center;margin:0 auto 10px;max-width:880px}'
+  +'#pid-ov .pid-ovtop button{background:var(--sur2);border:1px solid var(--brd);color:var(--ink);border-radius:8px;padding:9px 14px;font-weight:700;font-size:13px}'
+  +'#m-partid{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 274px);z-index:60;width:50px;height:50px;border-radius:50%;border:none;background:#7a4cc2;color:#fff;font-size:21px;box-shadow:0 4px 14px rgba(0,0,0,.3)}'
+  +'#pid-root .pid-hide-mob{}'
+  +'body.mobile-mode #pid-root .pid-hide-mob{display:none!important}'
+  +'@media (max-width:520px){#pid-root .pid-type{font-size:19px}}';
+  document.head.appendChild(css);
+
+  /* ---------- UI skeleton ---------- */
+  function rootHtml(){
+    return ''
+    +'<div class="pid-card">'
+    +'  <div><div class="pid-h">🧩 Identify a customer\'s sample part</div>'
+    +'  <div class="pid-mut">Take clear photos of the part - one showing any stamped / printed numbers up close. AI reads the numbers, tells you what the part is, and checks your stock (including other brands\' equivalents).</div></div>'
+    +'  <div class="pid-shots" id="pid-shots"></div>'
+    +'  <input type="file" id="pid-cam" accept="image/*" capture="environment" style="display:none">'
+    +'  <input type="file" id="pid-gal" accept="image/*" multiple style="display:none">'
+    +'  <div class="pid-row"><button class="btn bs" id="pid-btn-cam">📷 Camera</button><button class="btn bs" id="pid-btn-gal">🖼️ Gallery</button>'
+    +'  <span class="pid-mut pid-hide-mob" style="font-size:11.5px">or paste (Ctrl+V) / drop a photo here</span></div>'
+    +'  <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))">'
+    +'    <div><div class="pid-lbl" style="margin-bottom:4px">Vehicle (optional)</div><input class="pid-in" id="pid-veh" placeholder="e.g. Toyota Hiace KDH200 / Isuzu Elf 4JG2"></div>'
+    +'    <div><div class="pid-lbl" style="margin-bottom:4px">Notes (optional)</div><input class="pid-in" id="pid-note" placeholder="e.g. front LH, from water pump"></div>'
+    +'  </div>'
+    +'  <button class="btn bp pid-go" id="pid-go">🔍 Identify part</button>'
+    +'</div>'
+    +'<div id="pid-out"></div>'
+    +'<div class="pid-card" id="pid-hist-card" style="display:none"><div class="pid-lbl">🕒 Recent scans</div><div class="pid-hist" id="pid-hist"></div></div>';
+  }
+
+  var root=null;
+  function ensureRoot(){
+    if(root)return root;
+    root=document.createElement('div');root.id='pid-root';root.innerHTML=rootHtml();
+    $q('#pid-btn-cam').onclick=function(){$q('#pid-cam').click();};
+    $q('#pid-btn-gal').onclick=function(){$q('#pid-gal').click();};
+    $q('#pid-cam').onchange=function(e){addFiles(e.target.files);e.target.value='';};
+    $q('#pid-gal').onchange=function(e){addFiles(e.target.files);e.target.value='';};
+    $q('#pid-go').onclick=identify;
+    root.addEventListener('dragover',function(e){e.preventDefault();});
+    root.addEventListener('drop',function(e){e.preventDefault();if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files);});
+    root.addEventListener('click',onRootClick);
+    renderShots();renderHist();
+    return root;
+  }
+  function $q(sel){return root.querySelector(sel);}
+
+  // Paste a photo straight from WhatsApp Web / screenshot while Part ID is on screen
+  document.addEventListener('paste',function(e){
+    if(!root||!root.isConnected||!root.offsetParent)return;
+    var items=(e.clipboardData&&e.clipboardData.items)||[],files=[];
+    for(var i=0;i<items.length;i++){if(items[i].kind==='file'&&/^image\//.test(items[i].type))files.push(items[i].getAsFile());}
+    if(files.length){e.preventDefault();addFiles(files);}
+  });
+
+  /* ---------- photos ---------- */
+  function readFile(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result);};r.onerror=no;r.readAsDataURL(f);});}
+  function shrink(dataUrl,max,q){
+    return new Promise(function(ok,no){var img=new Image();img.onload=function(){
+      var w=img.width,h=img.height,s=Math.min(1,max/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+      var c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);ok(c.toDataURL('image/jpeg',q));
+    };img.onerror=function(){no(new Error('bad image'));};img.src=dataUrl;});
+  }
+  async function addFiles(list){
+    var arr=Array.prototype.slice.call(list||[]).filter(function(f){return f&&/^image\//.test(f.type||'image/');});
+    for(var i=0;i<arr.length;i++){
+      if(PID.photos.length>=3){toast('Max 3 photos - remove one first','inf');break;}
+      try{
+        var raw=await readFile(arr[i]);
+        var big=await shrink(raw,1600,0.88);           // sharp enough to read stamped digits
+        PID.photos.push({url:big});
+      }catch(e){toast('Could not read that photo','err');}
+    }
+    renderShots();
+  }
+  function renderShots(){
+    if(!root)return;
+    var h='';
+    for(var i=0;i<3;i++){
+      var p=PID.photos[i];
+      if(p)h+='<div class="pid-shot"><img src="'+p.url+'" alt="Part photo '+(i+1)+'"><button class="x" data-pid-del="'+i+'" aria-label="Remove photo">✕</button></div>';
+      else h+='<div class="pid-shot" data-pid-add="1"><span class="big">'+(i===0?'📷':'＋')+'</span>'+(i===0?'Whole part':i===1?'Numbers close-up':'Other side')+'</div>';
+    }
+    $q('#pid-shots').innerHTML=h;
+  }
+
+  /* ---------- Gemini ---------- */
+  async function pidModels(apiKey){
+    if(PID._models)return PID._models;
+    var models=[];
+    try{
+      var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(apiKey));
+      if(r.ok){var d=await r.json();(d.models||[]).forEach(function(mo){
+        var id=(mo.name||'').replace('models/','');
+        if((mo.supportedGenerationMethods||[]).indexOf('generateContent')!==-1&&/flash/i.test(id)&&!/lite|image|tts|live|audio/i.test(id))models.push(id);
+      });
+      models.sort(function(a,b){return (b.match(/\d+(\.\d+)?/)||[0])[0]-(a.match(/\d+(\.\d+)?/)||[0])[0];});}
+    }catch(e){}
+    ['gemini-flash-latest','gemini-3-flash','gemini-2.5-flash'].forEach(function(d){if(models.indexOf(d)===-1)models.push(d);});
+    PID._models=models;return models;
+  }
+  // body: request body; returns {text, data}
+  async function callGemini(body){
+    var apiKey=getGeminiApiKey();
+    if(!apiKey)throw new Error('No Gemini key');
+    var models=await pidModels(apiKey),lastErr='';
+    for(var m=0;m<models.length;m++){
+      var url='https://generativelanguage.googleapis.com/v1beta/models/'+models[m]+':generateContent?key='+encodeURIComponent(apiKey);
+      for(var attempt=1;attempt<=2;attempt++){
+        var resp;
+        try{resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+        catch(e){lastErr='network error';continue;}
+        if(!resp.ok){
+          var t=await resp.text();lastErr='HTTP '+resp.status;
+          try{var ej=JSON.parse(t);if(ej.error&&ej.error.message)lastErr+=': '+ej.error.message;}catch(e){}
+          if(resp.status===400&&t.indexOf('API_KEY_INVALID')!==-1){localStorage.removeItem('neme_gemini_api_key');throw new Error('Invalid Gemini key - removed, try again to re-enter');}
+          if(resp.status===404||resp.status===400){break;}            // model can't do this -> next model
+          if(resp.status===429||resp.status>=500){await new Promise(function(r){setTimeout(r,2500);});continue;}
+          break;
+        }
+        var data=await resp.json(),cand=(data.candidates&&data.candidates[0])||{};
+        var text=(cand.content&&cand.content.parts||[]).map(function(p){return p.text||'';}).join('');
+        if(text.trim())return {text:text,data:data,cand:cand,model:models[m]};
+        lastErr='empty reply ('+(cand.finishReason||'?')+')';
+      }
+    }
+    throw new Error(lastErr||'AI unavailable');
+  }
+  function parseJson(text){
+    var clean=String(text||'').replace(/```json|```/g,'').trim();
+    var s=clean.indexOf('{'),e=clean.lastIndexOf('}');
+    if(s<0||e<=s)throw new Error('AI reply was not readable');
+    return JSON.parse(clean.substring(s,e+1));
+  }
+
+  function stockCategories(){
+    var seen={},out=[];
+    (DB.parts||[]).forEach(function(p){var c=p.category||'';if(c&&!seen[c]){seen[c]=1;out.push(c);}});
+    return out.slice(0,150);
+  }
+
+  function idPrompt(veh,note){
+    return 'You are an expert auto-parts counterman in Sri Lanka (Japanese, Indian, Korean and European vehicles: Toyota, Nissan, Isuzu, Mitsubishi, Mazda, Suzuki, Honda, Tata, Ashok Leyland, Bajaj, Hyundai, etc.).\n'
+    +'A customer brought this used/broken part to the counter. Look at ALL photos and identify it so we can sell a replacement.\n'
+    +(veh?'Customer says the vehicle is: '+veh+'\n':'')
+    +(note?'Extra notes: '+note+'\n':'')
+    +'Our stock categories (use one of these for stockCategory if it fits, else ""): '+stockCategories().join(' | ')+'\n\n'
+    +'Respond with ONLY a JSON object:\n'
+    +'{"partType":"short name e.g. Oil Filter, Clutch Disc, Tie Rod End (outer), Water Pump",'
+    +'"stockCategory":"",'
+    +'"brand":"maker brand visible on the part, or \\"\\"",'
+    +'"description":"1-2 sentences: what it is, where it fits, key features",'
+    +'"numbers":[{"value":"exactly as printed","kind":"oem|aftermarket|brand-code|size|date-batch|other","confidence":"high|medium|low","where":"e.g. stamped on flange"}],'
+    +'"crossRefs":[{"value":"part number","brand":"Toyota OEM / VIC / Sakura / 555 / MK / Exedy / Aisin ...","note":""}],'
+    +'"vehicles":["make model chassis/engine code"],'
+    +'"specs":["measurable facts that help match: thread size, spline count, diameter, teeth, pin count, LH/RH"],'
+    +'"keywords":["UPPERCASE words a shop inventory name would contain, e.g. OIL FILTER, HIACE, 1KZ"],'
+    +'"checks":["what to measure or compare at the counter to confirm the match"],'
+    +'"confidence":"high|medium|low"}\n'
+    +'Rules:\n'
+    +'- numbers: ONLY text you can actually see on the part/box/label. Read digits very carefully (0/O, 1/I, 5/S, 8/B). Never invent. Ignore "MADE IN" text and logos. If unsure of a character, still include it with confidence "low".\n'
+    +'- crossRefs: from your knowledge, the genuine OEM number(s) and common aftermarket equivalents for this part. Leave empty if you do not know - do not guess wildly.\n'
+    +'- If no numbers are visible, identify the part from its shape and give specs + checks instead.\n'
+    +'- vehicles: most likely applications, max 6.\n'
+    +'- If the photo is not an auto part, set partType to "Not an auto part" and confidence "low".';
+  }
+
+  async function identify(){
+    if(PID.busy)return;
+    if(!document.body.classList.contains('unlocked')){toast('🔒 Log in first','err');return;}
+    if(!PID.photos.length){toast('📷 Add a photo of the part first','inf');$q('#pid-btn-cam').focus();return;}
+    PID.busy=true;PID.verify=null;
+    var btn=$q('#pid-go');btn.disabled=true;btn.innerHTML='<span class="pid-spin"></span> Reading the part…';
+    $q('#pid-out').innerHTML='';
+    var veh=$q('#pid-veh').value.trim(),note=$q('#pid-note').value.trim();
+    try{
+      var parts=PID.photos.map(function(p){return {inline_data:{mime_type:'image/jpeg',data:p.url.split(',')[1]}};});
+      parts.push({text:idPrompt(veh,note)});
+      var r=await callGemini({contents:[{parts:parts}],generationConfig:{temperature:0.1,responseMimeType:'application/json',maxOutputTokens:4096}});
+      var res=cleanResult(parseJson(r.text));
+      res.vehHint=veh;res.note=note;
+      PID.result=res;
+      render();
+      saveHist(res);
+    }catch(e){
+      console.warn('Part ID failed',e);
+      $q('#pid-out').innerHTML='<div class="pid-card"><div class="pid-h">⚠️ Could not identify</div><div class="pid-mut">'+esc(e.message||e)+'</div><div class="pid-mut">Tips: get closer to the numbers, use daylight, wipe off oil/dirt, avoid flash glare.</div></div>';
+    }finally{
+      PID.busy=false;btn.disabled=false;btn.innerHTML='🔍 Identify part';
+    }
+  }
+
+  function arr(a){return Array.isArray(a)?a:[];}
+  function cleanResult(j){
+    var res={
+      partType:String(j.partType||'Unknown part').trim(),
+      stockCategory:String(j.stockCategory||'').trim(),
+      brand:String(j.brand||'').trim(),
+      description:String(j.description||'').trim(),
+      numbers:arr(j.numbers).map(function(n){return typeof n==='string'?{value:n}:n;}).filter(function(n){return n&&n.value;}).map(function(n){
+        return {value:String(n.value).trim().toUpperCase(),kind:String(n.kind||'other'),confidence:String(n.confidence||'medium').toLowerCase(),where:String(n.where||'')};}),
+      crossRefs:arr(j.crossRefs).map(function(n){return typeof n==='string'?{value:n}:n;}).filter(function(n){return n&&n.value;}).map(function(n){
+        return {value:String(n.value).trim().toUpperCase(),brand:String(n.brand||''),note:String(n.note||''),src:'ai'};}),
+      vehicles:arr(j.vehicles).map(String).slice(0,8),
+      specs:arr(j.specs).map(String).slice(0,8),
+      keywords:arr(j.keywords).map(function(k){return String(k).toUpperCase();}).slice(0,15),
+      checks:arr(j.checks).map(String).slice(0,6),
+      confidence:/^(high|medium|low)$/.test(String(j.confidence||'').toLowerCase())?String(j.confidence).toLowerCase():'medium'
+    };
+    // de-dupe numbers / cross refs by normalized value
+    var seen={};
+    res.numbers=res.numbers.filter(function(n){var k=norm(n.value);if(!k||seen[k])return false;seen[k]=1;return true;});
+    res.crossRefs=res.crossRefs.filter(function(n){var k=norm(n.value);if(!k||seen[k])return false;seen[k]=1;return true;});
+    return res;
+  }
+
+  /* ---------- stock matching ---------- */
+  var IDX=null,IDXN=-1;
+  function buildIndex(){
+    var list=DB.parts||[];
+    if(IDX&&IDXN===list.length&&PID._idxRef===list&&Date.now()-PID._idxAt<20000)return IDX;
+    IDX=list.map(function(p){
+      var raw=[p.name,p.sku,p.barcode,p.oem,p.altNo,p.partNo].filter(Boolean).join(' , ');
+      var toks={};
+      String(raw).toUpperCase().split(/[\s,;()\[\]]+/).forEach(function(t){
+        var n=norm(t);if(n.length>=3&&hasDigit(n))toks[n]=1;
+        // also split on slashes ("C-805/C-806")
+        t.split('/').forEach(function(x){var nx=norm(x);if(nx.length>=3&&hasDigit(nx))toks[nx]=1;});
+      });
+      var hay=(String(p.name||'')+' '+(p.group||'')+' '+(p.category||'')+' '+(p.desc||'')).toUpperCase();
+      return {p:p,toks:toks,full:norm(raw),hay:hay};
+    });
+    IDXN=list.length;PID._idxRef=list;PID._idxAt=Date.now();
+    return IDX;
+  }
+  // numbers: [{value, src:'read'|'ai'|'web', label}]
+  function matchNumbers(numbers){
+    var idx=buildIndex(),hits={};
+    numbers.forEach(function(num){
+      var n=norm(num.value);
+      if(n.length<3||!hasDigit(n))return;              // brand words alone never match (avoids the EXEDY problem)
+      idx.forEach(function(e){
+        var score=0,how='';
+        if(e.toks[n]){score=100;how='exact';}
+        else if(n.length>=5&&e.full.indexOf(n)!==-1){score=85;how='contains';}
+        else if(n.length>=6){
+          for(var t in e.toks){if(t.length>=5&&/[A-Z]/.test(t)===/[A-Z]/.test(n)&&n.indexOf(t)===0){score=60;how='close';break;}}
+        }
+        if(!score)return;
+        if(num.src!=='read')score-=15;                   // cross-ref matches rank below what's printed on the part
+        var id=e.p.id,cur=hits[id];
+        if(!cur||cur.score<score)hits[id]={p:e.p,score:score,how:how,via:num.value,src:num.src,label:num.label||''};
+      });
+    });
+    return Object.keys(hits).map(function(k){return hits[k];}).sort(sortHits);
+  }
+  function sortHits(a,b){
+    if(b.score!==a.score)return b.score-a.score;
+    return (Number(b.p.qty)>0)-(Number(a.p.qty)>0);
+  }
+  var STOP={THE:1,AND:1,FOR:1,WITH:1,PART:1,PARTS:1,ASSY:1,ASSEMBLY:1,LEFT:0,RIGHT:0,FRONT:0,REAR:0,TYPE:1,UNIT:1,AUTO:1,CAR:1,NEW:1};
+  function words(s){return String(s||'').toUpperCase().split(/[^A-Z0-9]+/).filter(function(w){return w.length>=3&&!STOP[w];});}
+  function similar(res,exclude){
+    var idx=buildIndex();
+    var typeW=words(res.partType+' '+res.stockCategory);
+    if(!typeW.length)return [];
+    var other={};
+    res.keywords.concat(res.vehicles).concat([res.vehHint||'']).forEach(function(k){words(k).forEach(function(w){if(typeW.indexOf(w)<0)other[w]=1;});});
+    var otherW=Object.keys(other);
+    var out=[];
+    idx.forEach(function(e){
+      if(exclude[e.p.id])return;
+      var hay=e.hay+' '+String(e.p.sku||'').toUpperCase();
+      var cat=String(e.p.category||'').toUpperCase();
+      var t=0;typeW.forEach(function(w){if(hay.indexOf(w)!==-1)t++;});
+      var catHit=res.stockCategory&&cat===res.stockCategory.toUpperCase();
+      if(!catHit&&t<Math.min(2,typeW.length))return;    // must look like the same KIND of part
+      var o=0;otherW.forEach(function(w){if(new RegExp('(^|[^A-Z0-9])'+w.replace(/[^A-Z0-9]/g,'')+'([^A-Z0-9]|$)').test(hay))o++;});
+      if(!o)return;                                     // and share a vehicle/engine/size word
+      out.push({p:e.p,score:o*10+t+(catHit?3:0)+(Number(e.p.qty)>0?2:0),how:'similar'});
+    });
+    return out.sort(function(a,b){return b.score-a.score;}).slice(0,8);
+  }
+
+  /* ---------- render results ---------- */
+  function allNumbers(res){
+    var list=res.numbers.map(function(n){return {value:n.value,src:'read',label:n.kind};});
+    res.crossRefs.forEach(function(c){list.push({value:c.value,src:c.src||'ai',label:c.brand});});
+    if(PID.verify)PID.verify.crossRefs.forEach(function(c){list.push({value:c.value,src:'web',label:c.brand});});
+    return list;
+  }
+  function itemHtml(h){
+    var p=h.p,q=Number(p.qty)||0;
+    var why=h.how==='exact'||h.how==='contains'
+      ?(h.src==='read'?'<span class="why exact">✓ matches '+esc(h.via)+'</span>':'<span class="why xref">≈ equivalent of '+esc(h.via)+(h.label?' ('+esc(h.label)+')':'')+'</span>')
+      :h.how==='close'?'<span class="why">close to '+esc(h.via)+' - check</span>'
+      :'<span class="why">similar - check by eye</span>';
+    var loc=p.location?'<span>📍 '+esc(p.location)+'</span>':'';
+    var acts='<div class="pid-acts">'
+      +(q>0&&!isMob()?'<button class="btn bp" data-pid-cart="'+esc(p.id)+'">🛒 Add to cart</button>':'')
+      +'<button class="btn bs" data-pid-copy="'+esc(p.name)+'">📋 Copy</button></div>';
+    return '<div class="pid-item"><div style="min-width:0"><div class="nm">'+esc(p.name)+'</div>'
+      +'<div class="meta">'+why+'<span>'+esc(p.category||p.group||'')+'</span>'+loc+'<span>'+money(p.price)+'</span></div></div>'
+      +'<div class="pid-q '+(q>0?'ok':'out')+'">'+(q>0?q+' in':'OUT')+'</div>'+acts+'</div>';
+  }
+  function searchLinks(n,res){
+    var q=encodeURIComponent(n+' '+(res.partType&&res.partType!=='Unknown part'?res.partType:''));
+    var nn=encodeURIComponent(n);
+    return '<div class="pid-row">'
+      +'<a class="btn bs" target="_blank" rel="noopener" href="https://www.google.com/search?q='+q+'">🔎 Google</a>'
+      +'<a class="btn bs" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q='+q+'">🖼️ Images</a>'
+      +'<a class="btn bs" target="_blank" rel="noopener" href="https://partsouq.com/en/search/all?q='+nn+'">🧭 PartSouq</a>'
+      +'<a class="btn bs" target="_blank" rel="noopener" href="https://www.amayama.com/en/search?q='+nn+'">🇯🇵 Amayama</a>'
+      +'</div>';
+  }
+  function bestNumber(res){
+    var r=res.numbers.filter(function(n){return n.kind!=='date-batch'&&n.kind!=='size'&&hasDigit(n.value);});
+    r.sort(function(a,b){var o={high:0,medium:1,low:2};return (o[a.confidence]||1)-(o[b.confidence]||1);});
+    if(r[0])return r[0].value;
+    if(res.crossRefs[0])return res.crossRefs[0].value;
+    return '';
+  }
+  function render(){
+    var res=PID.result;if(!res||!root)return;
+    var nums=allNumbers(res);
+    var hits=matchNumbers(nums);
+    // an 'equivalent' that isn't even the same kind of part is probably a bad AI cross-ref
+    var tw=words(res.partType+' '+res.stockCategory);
+    hits.forEach(function(h){if(h.src!=='read'&&tw.length){var hay=String(h.p.name||'')+' '+(h.p.category||'')+' '+(h.p.group||'');hay=hay.toUpperCase();
+      if(!tw.some(function(w){return hay.indexOf(w)!==-1;})){h.how='close';h.score-=30;}}});
+    hits.sort(sortHits);
+    var ex={};hits.forEach(function(h){ex[h.p.id]=1;});
+    var sim=similar(res,ex);
+    var hitNorms={};hits.forEach(function(h){hitNorms[norm(h.via)]=1;});
+    var best=bestNumber(res);
+    var inStock=hits.filter(function(h){return Number(h.p.qty)>0;}).length;
+
+    var h='';
+    // 1. What is it
+    h+='<div class="pid-card">'
+      +'<div class="pid-row" style="justify-content:space-between"><div class="pid-lbl">AI identification</div><span class="pid-conf '+res.confidence+'">'+res.confidence+' confidence</span></div>'
+      +'<div class="pid-type">'+esc(res.partType)+(res.brand?' <span style="color:var(--mut);font-size:.7em">· '+esc(res.brand)+'</span>':'')+'</div>'
+      +(res.description?'<div class="pid-mut" style="font-size:13px">'+esc(res.description)+'</div>':'')
+      +(res.vehicles.length?'<div><div class="pid-lbl">Likely fits</div><ul class="pid-ul">'+res.vehicles.map(function(v){return '<li>'+esc(v)+'</li>';}).join('')+'</ul></div>':'')
+      +'</div>';
+
+    // 2. Stock result banner + matches
+    h+='<div class="pid-card">';
+    if(hits.length){
+      h+='<div class="pid-h">'+(inStock?'✅ '+inStock+' match'+(inStock>1?'es':'')+' in stock':'⚠️ Found in your list but OUT of stock')+'</div>';
+      h+='<div>'+hits.slice(0,12).map(itemHtml).join('')+'</div>';
+    }else{
+      h+='<div class="pid-h">❌ No part-number match in stock</div><div class="pid-mut">Check the similar items below, or search online / ask a supplier.</div>';
+    }
+    h+='</div>';
+
+    if(sim.length){
+      h+='<div class="pid-card"><div class="pid-lbl">🔍 Similar items in stock - compare by eye</div><div>'+sim.map(itemHtml).join('')+'</div></div>';
+    }
+
+    // 3. Numbers read
+    h+='<div class="pid-card"><div class="pid-lbl">🔢 Numbers read from the part <span style="text-transform:none;letter-spacing:0;font-weight:500">(tap to search stock)</span></div>';
+    if(res.numbers.length){
+      h+='<div class="pid-chips">'+res.numbers.map(function(n){
+        return '<span class="pid-chip'+(hitNorms[norm(n.value)]?' hit':'')+(n.confidence==='low'?' low':'')+'" data-pid-num="'+esc(n.value)+'" title="'+esc(n.where)+'"><b>'+esc(n.value)+'</b><small>'+esc(n.kind)+(n.confidence==='low'?' · unsure':'')+'</small></span>';
+      }).join('')+'</div>';
+    }else h+='<div class="pid-mut">No readable numbers. Take a close-up of any stamp, sticker or casting marks - or use the checks below.</div>';
+    // cross refs
+    var xr=res.crossRefs.concat(PID.verify?PID.verify.crossRefs:[]);
+    if(xr.length){
+      h+='<div class="pid-lbl" style="margin-top:4px">🔁 Equivalent numbers <span style="text-transform:none;letter-spacing:0;font-weight:500">('+(PID.verify?'AI + web check':'AI knowledge - verify before ordering')+')</span></div>';
+      h+='<div class="pid-chips">'+xr.map(function(c){
+        return '<span class="pid-chip'+(hitNorms[norm(c.value)]?' hit':'')+'" data-pid-num="'+esc(c.value)+'"><b>'+esc(c.value)+'</b>'+(c.brand?'<small>'+esc(c.brand)+(c.src==='web'?' · web':'')+'</small>':'')+'</span>';
+      }).join('')+'</div>';
+    }
+    // manual search
+    h+='<div class="pid-row" style="flex-wrap:nowrap"><input class="pid-in" id="pid-manual" placeholder="Type / fix a number and search stock" value="'+esc(best)+'" autocomplete="off" spellcheck="false" style="font-family:\'DM Mono\',monospace;text-transform:uppercase"><button class="btn bp" id="pid-manual-go" style="flex:0 0 auto">Search</button></div>';
+    h+='<div id="pid-manual-out"></div>';
+    h+='</div>';
+
+    // 4. Specs + checks
+    if(res.specs.length||res.checks.length){
+      h+='<div class="pid-card">'
+        +(res.specs.length?'<div><div class="pid-lbl">📐 Specs to match</div><ul class="pid-ul">'+res.specs.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul></div>':'')
+        +(res.checks.length?'<div><div class="pid-lbl">✅ Confirm at the counter</div><ul class="pid-ul">'+res.checks.map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul></div>':'')
+        +'</div>';
+    }
+
+    // 5. Online + verify + share
+    var sn=best||res.partType;
+    h+='<div class="pid-card"><div class="pid-lbl">🌐 Find it online / ask supplier</div>'
+      +searchLinks(sn,res)
+      +'<div class="pid-row"><button class="btn bs" id="pid-verify">'+(PID.verify?'🔄 Re-check online':'🌐 Verify numbers with Google (AI)')+'</button>'
+      +'<button class="btn bs" id="pid-share">📤 Share photo + details</button></div>'
+      +'<div id="pid-verify-out">'+verifyHtml()+'</div>'
+      +'</div>';
+
+    $q('#pid-out').innerHTML=h;
+    var mi=$q('#pid-manual');
+    $q('#pid-manual-go').onclick=function(){manualSearch(mi.value);};
+    mi.onkeydown=function(e){if(e.key==='Enter')manualSearch(mi.value);};
+    $q('#pid-verify').onclick=verifyOnline;
+    $q('#pid-share').onclick=share;
+  }
+
+  function manualSearch(v){
+    v=String(v||'').trim();var out=$q('#pid-manual-out');
+    if(!v){out.innerHTML='';return;}
+    var hits=matchNumbers([{value:v,src:'read'}]);
+    if(!hits.length){
+      // fall back to plain text search across name/sku
+      var words=v.toUpperCase().split(/\s+/).filter(Boolean);
+      hits=(DB.parts||[]).filter(function(p){var t=(String(p.name||'')+' '+(p.sku||'')+' '+(p.barcode||'')).toUpperCase();return words.every(function(w){return t.indexOf(w)!==-1;});})
+        .slice(0,12).map(function(p){return {p:p,how:'similar',score:1};});
+    }
+    out.innerHTML=hits.length?'<div style="margin-top:6px">'+hits.slice(0,12).map(itemHtml).join('')+'</div>'+searchLinks(v,PID.result||{partType:''})
+      :'<div class="pid-mut" style="margin-top:6px">Nothing in stock for <b>'+esc(v)+'</b>.</div>'+searchLinks(v,PID.result||{partType:''});
+  }
+
+  /* ---------- live Google check (Gemini + Google Search grounding, free tier) ---------- */
+  function verifyHtml(){
+    var v=PID.verify;if(!v)return '';
+    if(v.error)return '<div class="pid-warn" style="margin-top:6px">'+esc(v.error)+'</div>';
+    var h='<div class="pid-warn" style="margin-top:6px">'+(v.summary?esc(v.summary):'Checked online.')+'</div>';
+    if(v.vehicles&&v.vehicles.length)h+='<div style="margin-top:6px"><div class="pid-lbl">Fitment found online</div><ul class="pid-ul">'+v.vehicles.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></div>';
+    if(v.sources&&v.sources.length)h+='<div class="pid-src" style="margin-top:6px"><div class="pid-lbl">Sources</div>'+v.sources.slice(0,6).map(function(s){return '<div><a target="_blank" rel="noopener" href="'+esc(s.uri)+'">'+esc(s.title||s.uri)+'</a></div>';}).join('')+'</div>';
+    return h;
+  }
+  async function verifyOnline(){
+    var res=PID.result;if(!res||PID.busy)return;
+    var nums=res.numbers.filter(function(n){return hasDigit(n.value)&&n.kind!=='date-batch';}).map(function(n){return n.value;});
+    if(!nums.length&&!res.crossRefs.length){toast('No part numbers to check - type one in the search box first','inf');return;}
+    PID.busy=true;var b=$q('#pid-verify');b.disabled=true;b.innerHTML='<span class="pid-spin"></span> Searching Google…';
+    var prompt='Use Google Search. A customer\'s auto part ('+res.partType+(res.brand?', brand '+res.brand:'')+(res.vehHint?', vehicle '+res.vehHint:'')+') has these numbers printed on it: '
+      +(nums.join(', ')||'(none)')+'. Our AI guessed these equivalents: '+(res.crossRefs.map(function(c){return c.value+' ('+c.brand+')';}).join(', ')||'(none)')+'.\n'
+      +'Find: what this part number really is, the genuine OEM number(s), interchangeable aftermarket numbers from other brands, and vehicle fitment. Only report numbers you found in search results.\n'
+      +'Reply with ONLY JSON: {"summary":"1-2 sentences, mention if our guesses were wrong","crossRefs":[{"value":"","brand":""}],"vehicles":[""]}';
+    try{
+      var r=await callGemini({contents:[{parts:[{text:prompt}]}],tools:[{google_search:{}}],generationConfig:{temperature:0}});
+      var j=parseJson(r.text);
+      var gm=(r.cand&&r.cand.groundingMetadata)||{};
+      var srcs=(gm.groundingChunks||[]).map(function(c){return c.web||null;}).filter(Boolean);
+      var seen={};allNumbers(res).forEach(function(n){seen[norm(n.value)]=1;});
+      PID.verify={summary:String(j.summary||''),vehicles:arr(j.vehicles).map(String).slice(0,8),sources:srcs,
+        crossRefs:arr(j.crossRefs).filter(function(c){return c&&c.value;}).map(function(c){return {value:String(c.value).toUpperCase().trim(),brand:String(c.brand||''),src:'web'};})
+          .filter(function(c){var k=norm(c.value);if(!k||seen[k])return false;seen[k]=1;return true;})};
+      saveHist(res);
+    }catch(e){
+      PID.verify={error:'Online check failed: '+(e.message||e)+'. Use the Google / PartSouq buttons instead.',crossRefs:[]};
+    }finally{PID.busy=false;}
+    render();
+  }
+
+  /* ---------- share to supplier ---------- */
+  async function share(){
+    var res=PID.result;if(!res)return;
+    var txt='Hi, do you have this part?\n'+res.partType+(res.brand?' ('+res.brand+')':'')
+      +(res.numbers.length?'\nNo: '+res.numbers.filter(function(n){return n.kind!=='date-batch';}).map(function(n){return n.value;}).join(', '):'')
+      +(res.vehHint?'\nVehicle: '+res.vehHint:(res.vehicles[0]?'\nFor: '+res.vehicles[0]:''))
+      +'\n- Nuwara Eliya Motor Enterprise';
+    try{
+      if(navigator.canShare&&PID.photos[0]){
+        var blob=await (await fetch(PID.photos[0].url)).blob();
+        var file=new File([blob],'part.jpg',{type:'image/jpeg'});
+        if(navigator.canShare({files:[file]})){await navigator.share({files:[file],text:txt});return;}
+      }
+    }catch(e){if(e&&e.name==='AbortError')return;}
+    window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  }
+
+  /* ---------- history ---------- */
+  function loadHist(){try{return JSON.parse(localStorage.getItem(PID.histKey)||'[]')||[];}catch(e){return [];}}
+  async function saveHist(res){
+    try{
+      var list=loadHist();
+      if(!PID._histId){PID._histId=Date.now().toString(36);}
+      var thumb=PID._histThumb;
+      if(!thumb&&PID.photos[0]){thumb=await shrink(PID.photos[0].url,160,0.7);PID._histThumb=thumb;}
+      list=list.filter(function(x){return x.id!==PID._histId;});
+      list.unshift({id:PID._histId,ts:Date.now(),thumb:thumb||'',res:res,verify:PID.verify&&!PID.verify.error?PID.verify:null,by:(window._currentUser&&window._currentUser.displayName)||''});
+      list=list.slice(0,15);
+      try{localStorage.setItem(PID.histKey,JSON.stringify(list));}
+      catch(e){list=list.slice(0,6);localStorage.setItem(PID.histKey,JSON.stringify(list));}
+    }catch(e){console.warn('pid history',e);}
+    renderHist();
+  }
+  function renderHist(){
+    if(!root)return;
+    var list=loadHist(),card=$q('#pid-hist-card');
+    card.style.display=list.length?'':'none';
+    $q('#pid-hist').innerHTML=list.map(function(x){
+      var d=new Date(x.ts);
+      var lab=(x.res&&x.res.partType)||'Part';var num=x.res&&x.res.numbers&&x.res.numbers[0]?x.res.numbers[0].value:'';
+      return '<button class="pid-hcard" data-pid-hist="'+esc(x.id)+'">'+(x.thumb?'<img src="'+x.thumb+'" alt="">':'')
+        +'<span><b>'+esc(lab)+'</b>'+(num?' · '+esc(num):'')+'<br><small style="color:var(--mut)">'+d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small></span></button>';
+    }).join('');
+  }
+  function openHist(id){
+    var x=loadHist().find(function(h){return h.id===id;});if(!x)return;
+    PID.result=x.res;PID.verify=x.verify||null;PID._histId=x.id;PID._histThumb=x.thumb;
+    PID.photos=x.thumb?[{url:x.thumb}]:[];
+    $q('#pid-veh').value=x.res.vehHint||'';$q('#pid-note').value=x.res.note||'';
+    renderShots();render();
+    var o=$q('#pid-out');if(o&&o.scrollIntoView)o.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  /* ---------- clicks ---------- */
+  function onRootClick(e){
+    var t=e.target.closest('[data-pid-del],[data-pid-add],[data-pid-cart],[data-pid-copy],[data-pid-num],[data-pid-hist]');if(!t)return;
+    if(t.hasAttribute('data-pid-del')){e.stopPropagation();PID.photos.splice(+t.getAttribute('data-pid-del'),1);if(!PID.photos.length)newScan(true);renderShots();return;}
+    if(t.hasAttribute('data-pid-add')){$q('#pid-cam').click();return;}
+    if(t.hasAttribute('data-pid-cart')){addCart(t.getAttribute('data-pid-cart'));return;}
+    if(t.hasAttribute('data-pid-copy')){var v=t.getAttribute('data-pid-copy');(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){toast('📋 Copied','ok');},function(){toast(v,'inf');});return;}
+    if(t.hasAttribute('data-pid-num')){var n=t.getAttribute('data-pid-num'),mi=$q('#pid-manual');if(mi){mi.value=n;manualSearch(n);var mo=$q('#pid-manual-out');if(mo&&mo.scrollIntoView)mo.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
+    if(t.hasAttribute('data-pid-hist')){openHist(t.getAttribute('data-pid-hist'));return;}
+  }
+  // Starting new photos after a finished scan = a new history entry
+  function newScan(keepPhotos){PID._histId=null;PID._histThumb=null;PID.result=null;PID.verify=null;if(!keepPhotos)PID.photos=[];if($q('#pid-out'))$q('#pid-out').innerHTML='';}
+  var _add=addFiles;addFiles=async function(l){if(PID.result){newScan(false);}return _add(l);};
+
+  /* ---------- mount: desktop panel + mobile full-screen ---------- */
+  window.pidMountDesktop=function(){var host=document.getElementById('pid-host');if(host&&ensureRoot().parentNode!==host)host.appendChild(root);};
+  window.openPartIdMobile=function(){
+    if(!document.body.classList.contains('unlocked')){toast('🔒 Log in first','err');return;}
+    var ov=document.getElementById('pid-ov');
+    if(!ov){ov=document.createElement('div');ov.id='pid-ov';ov.innerHTML='<div class="pid-ovtop"><div style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:17px">🧩 Part ID</div><button id="pid-ov-close">✕ Close</button></div>';(document.getElementById('mapp')||document.body).appendChild(ov);
+      ov.querySelector('#pid-ov-close').onclick=function(){ov.style.display='none';document.documentElement.style.overflow='auto';};}
+    ov.appendChild(ensureRoot());ov.style.display='block';ov.scrollTop=0;
+  };
+
+  function wire(){
+    // desktop panel hook
+    if(typeof switchPanel==='function'&&!switchPanel._pid){
+      var _sp=switchPanel;switchPanel=function(id){var r=_sp.apply(this,arguments);if(id==='partid')window.pidMountDesktop();return r;};switchPanel._pid=1;
+    }
+    // Home quick tile
+    if(typeof renderHome==='function'&&!renderHome._pid){
+      var _rh=renderHome;renderHome=function(){var r=_rh.apply(this,arguments);try{
+        var q=document.getElementById('home-quick');
+        if(q&&!q.querySelector('[data-panel="partid"]')){
+          var b=document.createElement('button');b.className='btn bs home-q';b.setAttribute('data-panel','partid');
+          b.style.cssText='flex-direction:column;padding:18px 8px;gap:6px;font-size:12px';b.innerHTML='<span style="font-size:24px">🧩</span>Part ID';
+          b.onclick=function(){switchPanel('partid');};
+          var vin=q.querySelector('[data-panel="vinsearch"]');if(vin&&vin.nextSibling)q.insertBefore(b,vin.nextSibling);else q.appendChild(b);
+        }}catch(e){}return r;};renderHome._pid=1;
+    }
+    // mobile floating button
+    if(document.body.classList.contains('mobile-mode')&&!document.getElementById('m-partid')){
+      var fb=document.createElement('button');fb.id='m-partid';fb.title='Identify a part from photo';fb.textContent='🧩';fb.onclick=window.openPartIdMobile;
+      var app=document.getElementById('mapp')||document.body;app.appendChild(fb);
+    }
+  }
+  wire();
+  try{if(document.getElementById('home-quick')&&document.body.classList.contains('unlocked'))renderHome();}catch(e){}
+})();
 
 </script>
 </body>
