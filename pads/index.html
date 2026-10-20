@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14171b">
+<title>MK Pad Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Counter tool: measure strip on top, drawing grid below. NEME POS gauge-cluster palette. */
+:root{
+  --bg:#edeff2;--sur:#ffffff;--sur2:#e4e7eb;--brd:#d3d7dc;--ink:#171a1e;--mut:#5f6772;
+  --acc:#e8451f;--acc-ink:#ffffff;--grn:#16915a;--yel:#a86a00;--blu:#1e7fc2;
+  --paper:#ffffff;--line-ink:invert(0);
+  --f-disp:"Rajdhani","Arial Narrow",system-ui,sans-serif;
+  --f-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14171b;--sur:#1b1f24;--sur2:#232830;--brd:#33393f;--ink:#eceff3;--mut:#9aa3ae;
+  --acc:#ff5a36;--acc-ink:#1a0a05;--grn:#33d690;--yel:#ffc145;--blu:#3fa9f5;--paper:#e9ecef;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171b;--sur:#1b1f24;--sur2:#232830;--brd:#33393f;--ink:#eceff3;--mut:#9aa3ae;
+  --acc:#ff5a36;--acc-ink:#1a0a05;--grn:#33d690;--yel:#ffc145;--blu:#3fa9f5;--paper:#e9ecef;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:16px}
+h1,h2{font-family:var(--f-disp);font-weight:700;letter-spacing:.02em;margin:0;text-wrap:balance}
+h1{font-size:1.6rem}h1 b{color:var(--acc)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:18px}
+.top p{margin:2px 0 0;color:var(--mut);font-size:.9rem;max-width:60ch}
+.lbl{font-family:var(--f-disp);font-weight:700;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.panel{background:var(--sur);border:1px solid var(--brd);border-radius:10px;padding:14px;display:grid;gap:12px;min-width:0}
+@media (min-width:701px){.measure{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;box-shadow:0 6px 18px -12px #0006}}
+.mrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.1fr);gap:10px}
+.fld{display:grid;gap:4px;min-width:0}
+.fld input,.fld select{width:100%;min-width:0;background:var(--sur2);border:1px solid var(--brd);border-radius:8px;padding:10px;color:var(--ink);
+  font-family:var(--f-mono);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.fld input:focus-visible,.fld select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.fld .u{font-size:.75rem;color:var(--mut)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--brd);background:var(--sur2);color:var(--ink);border-radius:999px;padding:6px 12px;font:600 .85rem var(--f-body);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.chip small{font-family:var(--f-mono);opacity:.7;margin-left:3px}
+.opts{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:.88rem}
+.opts label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.opts input{accent-color:var(--acc);width:17px;height:17px}
+.howto{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.howto img{width:230px;background:var(--paper);border-radius:6px;padding:4px}
+.howto ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--mut)}
+.howto b{color:var(--ink)}
+details.help summary{cursor:pointer;font-size:.88rem;color:var(--blu);font-weight:600}
+.status{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.status .n{font-family:var(--f-disp);font-weight:700;font-size:1.2rem}
+.status .ex{font-size:.8rem;color:var(--yel);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
+.card{background:var(--sur);border:1px solid var(--brd);border-radius:10px;overflow:hidden;display:grid;grid-template-rows:auto 1fr;cursor:pointer;text-align:left;color:inherit;font:inherit;padding:0}
+.card.instock{border-color:var(--grn);box-shadow:inset 0 0 0 1px var(--grn)}
+.card .pic{background:var(--paper);aspect-ratio:4/3;max-width:100%;display:flex;align-items:center;justify-content:center;padding:6px;overflow:hidden}
+.card .pic img{max-height:100%;max-width:100%;object-fit:contain}
+.card .pic .none{color:#666;font-size:.8rem;text-align:center;padding:10px}
+.card .body{padding:10px 12px;display:grid;gap:6px;align-content:start}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.no{font-family:var(--f-disp);font-weight:700;font-size:1.35rem;letter-spacing:.03em}
+.mk{font-size:.75rem;color:var(--mut);font-weight:600}
+.dims{font-family:var(--f-mono);font-size:.85rem;font-variant-numeric:tabular-nums}
+.dims .d{color:var(--mut)}
+.dims .good{color:var(--grn)}.dims .near{color:var(--yel)}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;border:1px solid var(--brd);color:var(--mut)}
+.tag.stock{border-color:var(--grn);color:var(--grn)}
+.tag.disc{border-color:var(--yel);color:var(--yel)}
+.tag.rear{border-color:var(--blu);color:var(--blu)}
+.sname{font-size:.8rem;color:var(--grn);font-weight:600;word-break:break-word}
+.empty{padding:30px 10px;text-align:center;color:var(--mut)}
+.more{justify-self:center;background:var(--sur2);border:1px solid var(--brd);color:var(--ink);border-radius:8px;padding:10px 18px;font:700 .9rem var(--f-body);cursor:pointer}
+dialog{border:1px solid var(--brd);border-radius:12px;background:var(--sur);color:var(--ink);padding:0;width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:#000a}
+.dlg{display:grid;gap:12px;padding:14px}
+.dlg .pic{background:var(--paper);border-radius:8px;padding:10px;display:flex;justify-content:center}
+.dlg .pic img{max-height:60dvh}
+.dlg .x{background:var(--sur2);border:1px solid var(--brd);color:var(--ink);border-radius:8px;padding:8px 14px;font:700 .9rem var(--f-body);cursor:pointer}
+.dlg a{color:var(--blu)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:.9rem}
+.kv dt{color:var(--mut)}.kv dd{margin:0;min-width:0;word-break:break-word}
+.load{padding:40px;text-align:center;color:var(--mut)}
+@media (max-width:700px){
+  .mrow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .mrow .fld.num{grid-column:1/-1}
+  .howto{grid-template-columns:1fr}.howto img{width:100%;max-width:300px}
+  .fld input{font-size:1.1rem;padding:9px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.scan{display:grid;gap:12px}
+.scanrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--brd);background:var(--sur2);color:var(--ink);border-radius:8px;padding:11px 16px;font:700 .95rem var(--f-body);cursor:pointer}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.shots{display:flex;gap:8px;flex-wrap:wrap}
+.shot{position:relative;width:96px;height:96px;border-radius:8px;overflow:hidden;border:1px solid var(--brd);background:var(--sur2)}
+.shot img{width:100%;height:100%;object-fit:cover}
+.shot button{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:#000b;color:#fff;cursor:pointer;font-size:13px}
+.scanmsg{font-size:.9rem;color:var(--mut)}
+.scanmsg.err{color:var(--acc)}
+.read{display:grid;gap:6px;font-size:.9rem;background:var(--sur2);border-radius:8px;padding:10px 12px}
+.read b{font-family:var(--f-mono)}
+.picks{display:grid;gap:10px}
+.why{font-size:.82rem;color:var(--ink);background:var(--sur2);border-radius:6px;padding:6px 8px}
+.rank{font-family:var(--f-mono);font-size:.78rem;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--acc);color:var(--acc-ink)}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>MK Pad <b>Finder</b></h1>
+      <p>Scan or measure the customer's old pad and compare drawings from the MK Kashiyama disc pad catalog. Green cards are pads in your NEME POS list.</p>
+    </div>
+    <span class="lbl" id="count">Loading catalog…</span>
+  </header>
+
+  <section class="panel scan" aria-label="Scan a pad">
+    <div class="hd"><h2>Scan the old pad</h2><span class="lbl">AI · free Gemini</span></div>
+    <div class="scanmsg">Lay the pad flat on a plain surface and take the photo straight from above, backing plate side up. Typing the width X below as well makes the match much better.</div>
+    <div class="shots" id="shots"></div>
+    <div class="scanrow">
+      <button class="btn" type="button" id="bCam">📷 Camera</button>
+      <button class="btn" type="button" id="bGal">🖼️ Gallery</button>
+      <button class="btn pri" type="button" id="bScan">🔍 Find this pad</button>
+    </div>
+    <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="fGal" accept="image/*" multiple hidden>
+    <div class="scanmsg" id="scanMsg" role="status"></div>
+    <div id="scanOut" class="picks"></div>
+  </section>
+
+  <section class="panel measure" aria-label="Measurements">
+    <div class="mrow">
+      <div class="fld"><label class="lbl" for="x">Width X</label><input id="x" type="number" inputmode="decimal" step="0.1" min="0" placeholder="114.0"><span class="u">mm</span></div>
+      <div class="fld"><label class="lbl" for="y">Height Y</label><input id="y" type="number" inputmode="decimal" step="0.1" min="0" placeholder="47.0"><span class="u">mm</span></div>
+      <div class="fld"><label class="lbl" for="z">Thick Z</label><input id="z" type="number" inputmode="decimal" step="0.1" min="0" placeholder="15.0"><span class="u">mm, optional</span></div>
+      <div class="fld num"><label class="lbl" for="q">Or part number</label><input id="q" type="search" placeholder="D2053" autocomplete="off" spellcheck="false" style="text-transform:uppercase"><span class="u">MK number, any part of it</span></div>
+    </div>
+    <div class="chips" id="makers" role="group" aria-label="Vehicle maker"></div>
+    <div class="opts">
+      <label for="tol">Match within
+        <select id="tol" style="background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:4px 6px;color:var(--ink);font:inherit">
+          <option value="1">±1 mm</option><option value="2" selected>±2 mm</option><option value="3">±3 mm</option><option value="5">±5 mm</option>
+        </select></label>
+      <label><input type="checkbox" id="onlyStock"> Only pads in my stock list</label>
+      <label><input type="checkbox" id="hideDisc"> Hide discontinued</label>
+      <label><input type="checkbox" id="rearOnly"> Rear pads only</label>
+    </div>
+    <details class="help">
+      <summary>How to measure</summary>
+      <div class="howto" style="margin-top:10px">
+        <img alt="Pad diagram: X is full width, Y is height, Z is thickness" src="data:image/png;base64,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">
+        <ul>
+          <li><b>X</b> = full width of the backing plate, end to end, including the ears.</li>
+          <li><b>Y</b> = height of the backing plate.</li>
+          <li><b>Z</b> = new pad thickness without the shim. A worn pad will be thinner, so leave Z empty unless the pad is nearly new.</li>
+          <li>Use a vernier if you have one. Width alone usually narrows it down to a few pads, then compare the shapes.</li>
+          <li>The second digit of the number is the maker: D<b>2</b>xxx = Toyota, D<b>1</b>xxx = Nissan.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <div class="status"><span class="n" id="resN"></span><span class="ex" id="exNote"></span></div>
+  <div class="grid" id="grid"><div class="load">Loading 992 pad drawings…</div></div>
+  <button class="more" id="more" hidden>Show more</button>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script src="pads-data.js"></script>
+<script>
+(function(){
+  var P=window.MK_PADS||[];
+  var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
+  var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
+  var $=function(id){return document.getElementById(id)};
+  var st={maker:'',limit:60};
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function makerOf(p){return MK[p.n.charAt(1)]||''}
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+  $('makers').innerHTML=MAKERS.filter(function(m){return m[0]===''||P.some(function(p){return p.n.charAt(1)===m[0]})}).map(function(m){
+    var c=m[0]===''?P.length:P.filter(function(p){return p.n.charAt(1)===m[0]}).length;
+    return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+m[1]+'<small>'+c+'</small></button>'}).join('');
+  $('makers').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;st.maker=b.dataset.m;
+    [].forEach.call(this.children,function(c){c.setAttribute('aria-pressed',c===b)});go()});
+  $('count').textContent=P.length+' pads · '+P.filter(function(p){return p.s.length}).length+' in your list';
+
+  // Distance of a pad from the measurement: best of its drawings (some cells show inner + outer pads)
+  function score(p,x,y,z){
+    if(!p.d.length)return null;
+    var best=null;
+    p.d.forEach(function(d){
+      var dx=x?Math.abs(d[0]-x):0,dy=y?Math.abs(d[1]-y):0,dz=z?Math.abs(d[2]-z):0;
+      var s={dx:dx,dy:dy,dz:dz,d:d,t:dx+dy+dz*0.5};
+      if(!best||s.t<best.t)best=s});
+    return best;
+  }
+  function filtered(){
+    var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0;
+    var q=$('q').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+    var tol=parseFloat($('tol').value)||2;
+    var out=[];
+    P.forEach(function(p){
+      if(st.maker&&p.n.charAt(1)!==st.maker)return;
+      if($('onlyStock').checked&&!p.s.length)return;
+      if($('hideDisc').checked&&p.f.indexOf('disc')>=0)return;
+      if($('rearOnly').checked&&p.f.indexOf('rear')<0)return;
+      if(q&&p.n.indexOf(q)<0&&!p.r.some(function(r){return r.indexOf(q)>=0}))return;
+      var s=null;
+      if(x||y||z){s=score(p,x,y,z);if(!s||s.dx>tol||s.dy>tol||s.dz>tol+1)return}
+      out.push({p:p,s:s});
+    });
+    if(x||y||z)out.sort(function(a,b){return a.s.t-b.s.t||(b.p.s.length-a.p.s.length)});
+    else out.sort(function(a,b){return (b.p.s.length-a.p.s.length)||a.p.n.localeCompare(b.p.n)});
+    return {list:out,x:x,y:y,z:z};
+  }
+  function cls(v){return v<=0.6?'good':v<=1.5?'near':''}
+  function dimsHtml(r){
+    var p=r.p;if(!p.d.length)return '<div class="dims d">Size not printed in catalog</div>';
+    var d=r.s?r.s.d:p.d[0];
+    var part=function(lab,val,diff){return '<span class="'+(diff==null?'':cls(diff))+'">'+lab+' '+val.toFixed(1)+'</span>'};
+    return '<div class="dims">'+part('X',d[0],r.s&&$('x').value?r.s.dx:null)+' · '+part('Y',d[1],r.s&&$('y').value?r.s.dy:null)+' · '+part('Z',d[2],r.s&&$('z').value?r.s.dz:null)
+      +(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
+  }
+  function tags(p){
+    var t='';
+    if(p.s.length)t+='<span class="tag stock">In my list</span>';
+    if(p.f.indexOf('rear')>=0)t+='<span class="tag rear">Rear</span>';
+    if(p.f.indexOf('fr')>=0)t+='<span class="tag rear">Front &amp; rear</span>';
+    if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
+    if(p.f.indexOf('disc')>=0)t+='<span class="tag disc">Discontinued</span>';
+    if(p.f.indexOf('overseas')>=0)t+='<span class="tag">Export only</span>';
+    return t?'<div class="tags">'+t+'</div>':'';
+  }
+  function card(r){
+    var p=r.p;
+    return '<button class="card'+(p.s.length?' instock':'')+'" type="button" data-n="'+p.n+'">'
+      +'<div class="pic">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>'
+      +'<div class="body"><div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
+      +dimsHtml(r)+tags(p)
+      +(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')
+      +'</div></button>';
+  }
+  var last=null;
+  function go(keep){
+    if(!keep)st.limit=60;
+    var f=filtered();last=f;
+    var any=f.x||f.y||f.z;
+    $('resN').textContent=f.list.length?(f.list.length+(any?' pads match that size':' pads')):'No pads match';
+    $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(card).join('')
+      :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check you measured X across the ears.</div>';
+    $('more').hidden=f.list.length<=st.limit;
+    ['x','y','z','q','tol'].forEach(function(k){ls('mkpf_'+k,$(k).value)});
+  }
+  $('more').onclick=function(){st.limit+=60;go(true)};
+  ['x','y','z','q'].forEach(function(k){$(k).addEventListener('input',function(){$('exNote').textContent='';go()})});
+  ['tol','onlyStock','hideDisc','rearOnly'].forEach(function(k){$(k).addEventListener('change',function(){go()})});
+
+  $('grid').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
+  function openCard(n){
+    var p=P.find(function(x){return x.n===n});if(!p)return;
+    var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
+      +(p.i?'<div class="pic"><img alt="Drawing of '+p.n+'" src="'+p.i+'"></div>':'')
+      +'<dl class="kv">'
+      +'<dt>Maker code</dt><dd>'+(makerOf(p)||'-')+'</dd>'
+      +'<dt>Size</dt><dd class="dims">'+(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')+'</dd>'
+      +'<dt>Catalog page</dt><dd>'+p.p+'</dd>'
+      +(p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
+      +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd>'
+      +'</dl>'+tags(p)
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+p.n+'">Search '+p.n+' on Google</a></div>';
+    $('dlgBody').innerHTML=h;$('dlg').showModal();
+    $('dlgX').onclick=function(){$('dlg').close()};
+  }
+  $('dlgBody').addEventListener('click',function(e){var a=e.target.closest('[data-goto]');if(!a)return;e.preventDefault();
+    $('dlg').close();$('x').value=$('y').value=$('z').value='';$('q').value=a.dataset.goto;$('exNote').textContent='';go();window.scrollTo(0,0)});
+  $('dlg').addEventListener('click',function(e){if(e.target===this)this.close()});
+
+  // Restore last search, else open with a worked example (an MK pad that is in the stock list)
+  var had=false;['x','y','z','q','tol'].forEach(function(k){var v=ls('mkpf_'+k);if(v){$(k).value=v;if(k!=='tol')had=true}});
+  if(!had){$('x').value='114';$('y').value='47';$('exNote').textContent='Example: 114 × 47 mm. Type your own measurements.'}
+
+  /* ================= SCAN: photo -> Gemini reads it -> Gemini compares with catalog drawings ================= */
+  var shots=[],busy=false;
+  function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
+  function readFile(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=no;r.readAsDataURL(f)})}
+  function shrink(url,max){return new Promise(function(ok,no){var im=new Image();im.onload=function(){
+    var k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',0.86))};im.onerror=no;im.src=url})}
+  function renderShots(){
+    $('shots').innerHTML=shots.map(function(u,i){return '<div class="shot"><img src="'+u+'" alt="Pad photo '+(i+1)+'"><button type="button" data-del="'+i+'" aria-label="Remove photo">✕</button></div>'}).join('');
+  }
+  async function addFiles(list){
+    var a=[].slice.call(list||[]);
+    for(var i=0;i<a.length;i++){if(shots.length>=2){msg('Two photos are enough: one whole pad, one close-up of any numbers.');break}
+      try{shots.push(await shrink(await readFile(a[i]),1400))}catch(e){msg('Could not open that photo.',1)}}
+    renderShots();
+  }
+  $('bCam').onclick=function(){$('fCam').click()};
+  $('bGal').onclick=function(){$('fGal').click()};
+  $('fCam').onchange=function(e){addFiles(e.target.files);e.target.value=''};
+  $('fGal').onchange=function(e){addFiles(e.target.files);e.target.value=''};
+  $('shots').onclick=function(e){var b=e.target.closest('[data-del]');if(b){shots.splice(+b.dataset.del,1);renderShots()}};
+  document.addEventListener('paste',function(e){var it=(e.clipboardData&&e.clipboardData.items)||[],f=[];
+    for(var i=0;i<it.length;i++)if(it[i].kind==='file'&&/^image\//.test(it[i].type))f.push(it[i].getAsFile());if(f.length){e.preventDefault();addFiles(f)}});
+  function msg(t,err){$('scanMsg').innerHTML=t;$('scanMsg').className='scanmsg'+(err?' err':'')}
+
+  // ---- Gemini (same free key the POS uses: same site, same saved key) ----
+  function getKey(){
+    var k='';try{k=localStorage.getItem('neme_gemini_api_key')||''}catch(e){}
+    if(!k){k=(window.prompt('Paste your FREE Google Gemini API key (the same one the POS invoice scanner uses):')||'').trim();
+      if(k){try{localStorage.setItem('neme_gemini_api_key',k)}catch(e){}}}
+    return k;
+  }
+  var MODELS=null;
+  async function models(key){
+    if(MODELS)return MODELS;var m=[];
+    try{var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key));
+      if(r.ok){var d=await r.json();(d.models||[]).forEach(function(x){var id=(x.name||'').replace('models/','');
+        if((x.supportedGenerationMethods||[]).indexOf('generateContent')>=0&&/flash/i.test(id)&&!/lite|image|tts|live|audio/i.test(id))m.push(id)});
+        m.sort(function(a,b){return (b.match(/\d+(\.\d+)?/)||[0])[0]-(a.match(/\d+(\.\d+)?/)||[0])[0]})}}catch(e){}
+    ['gemini-flash-latest','gemini-2.5-flash'].forEach(function(d){if(m.indexOf(d)<0)m.push(d)});
+    return MODELS=m;
+  }
+  async function gemini(parts){
+    var key=getKey();if(!key)throw new Error('No Gemini key entered.');
+    var ms=await models(key),last='';
+    for(var i=0;i<ms.length;i++){
+      for(var t=0;t<2;t++){
+        var r;try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+ms[i]+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({contents:[{parts:parts}],generationConfig:{temperature:0,responseMimeType:'application/json',maxOutputTokens:4096}})})}
+        catch(e){last='No internet connection';continue}
+        if(!r.ok){var tx=await r.text();last='HTTP '+r.status;try{last+=': '+JSON.parse(tx).error.message}catch(e){}
+          if(tx.indexOf('API_KEY_INVALID')>=0){try{localStorage.removeItem('neme_gemini_api_key')}catch(e){}throw new Error('That Gemini key is not valid. Tap Find again to enter it.')}
+          if(r.status===429||r.status>=500){await new Promise(function(z){setTimeout(z,2500)});continue}
+          break}
+        var d=await r.json(),c=(d.candidates&&d.candidates[0])||{};
+        var txt=((c.content&&c.content.parts)||[]).map(function(p){return p.text||''}).join('').replace(/```json|```/g,'');
+        var a=txt.indexOf('{'),b=txt.lastIndexOf('}');
+        if(a>=0&&b>a){try{return JSON.parse(txt.slice(a,b+1))}catch(e){last='Unreadable AI reply'}}
+        else last='Empty AI reply';
+      }
+    }
+    throw new Error(last||'AI is not available right now.');
+  }
+  function img64(u){return {inline_data:{mime_type:u.indexOf('image/png')>0?'image/png':'image/jpeg',data:u.split(',')[1]}}}
+
+  var READ_PROMPT='These photos show a used DISC BRAKE PAD a customer brought to an auto parts shop in Sri Lanka. '
+   +'Respond with ONLY JSON:\n{"isBrakePad":true,'
+   +'"numbers":["every code printed or stamped on the backing plate or lining, exactly as written, e.g. D2053M, FDB1234, AN-456K"],'
+   +'"brand":"brand text visible or \\"\\"",'
+   +'"ratio":0.42,'
+   +'"ears":"none|one side|both sides",'
+   +'"features":["short facts about the outline: centre slot, wear-indicator clip, notches, tabs, holes, chamfered ends, curved top edge, shim"],'
+   +'"position":"front|rear|unknown"}\n'
+   +'ratio = height divided by width of the BACKING PLATE outline as seen from above (estimate carefully, 0.25-0.9). '
+   +'Read digits carefully (0/O, 1/I, 5/S, 8/B). Never invent numbers; empty list if none are readable.';
+
+  function pickPool(read){
+    var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0;
+    // 1) any number the AI read that is an MK catalog number
+    var direct=[];
+    (read.numbers||[]).forEach(function(n){var k=norm(n).match(/[DS]\d{4}[A-Z]?/);if(!k)return;
+      P.forEach(function(p){if(p.i&&(p.n===k[0]||p.n.replace(/M$/,'')===k[0].replace(/M$/,''))&&direct.indexOf(p)<0)direct.push(p)})});
+    // 2) shape candidates by size (if typed) or by outline ratio from the photo
+    var base=P.filter(function(p){return p.i&&p.d.length&&(!st.maker||p.n.charAt(1)===st.maker)});
+    var tol=Math.max(parseFloat($('tol').value)||2,2);
+    if(x||y)base=base.filter(function(p){return p.d.some(function(d){return (!x||Math.abs(d[0]-x)<=tol+1)&&(!y||Math.abs(d[1]-y)<=tol+1)})});
+    if(read.position==='rear')base.sort(function(a,b){return (b.f.indexOf('rear')>=0)-(a.f.indexOf('rear')>=0)});
+    var r=+read.ratio||0;
+    base.sort(function(a,b){
+      var ra=Math.min.apply(null,a.d.map(function(d){return Math.abs(d[1]/d[0]-r)})),rb=Math.min.apply(null,b.d.map(function(d){return Math.abs(d[1]/d[0]-r)}));
+      var sa=(x?Math.abs(a.d[0][0]-x)/20:0)+(r?ra:0),sb=(x?Math.abs(b.d[0][0]-x)/20:0)+(r?rb:0);return sa-sb});
+    var pool=direct.concat(base.filter(function(p){return direct.indexOf(p)<0})).slice(0,x||y?14:18);
+    return {pool:pool,direct:direct,sized:!!(x||y)};
+  }
+
+  async function scan(){
+    if(busy)return;
+    if(!shots.length){msg('Take or choose a photo of the pad first.',1);return}
+    busy=true;var b=$('bScan');b.disabled=true;$('scanOut').innerHTML='';
+    try{
+      msg('<span class="spin"></span> Step 1 of 2: reading the pad…');
+      var read=await gemini(shots.map(img64).concat([{text:READ_PROMPT}]));
+      if(read.isBrakePad===false){msg('That photo does not look like a disc brake pad. Try again, straight from above.',1);return}
+      var pk=pickPool(read);
+      if(!pk.pool.length){msg('No catalog pads fit those sizes. Clear the width/height or widen the range, then scan again.',1);return}
+      msg('<span class="spin"></span> Step 2 of 2: comparing with '+pk.pool.length+' catalog drawings…');
+      var parts=shots.map(img64);
+      parts.push({text:'Above: photo(s) of the customer\'s worn brake pad. Below: candidate catalog line drawings (MK Kashiyama). Each drawing is labelled with its number.'});
+      pk.pool.forEach(function(p){parts.push({text:'Candidate '+p.n+' (X '+p.d[0][0]+' mm, Y '+p.d[0][1]+' mm):'});parts.push(img64(p.i))});
+      parts.push({text:'Which candidate has the SAME backing-plate outline as the photographed pad? Compare: overall proportions, ear/tab shapes at the ends, notches, curve of the top and bottom edges, centre slot, wear-indicator position. '
+        +'Ignore the friction material wear and dirt. '+(read.numbers&&read.numbers.length?'Numbers read from the pad: '+read.numbers.join(', ')+'. ':'')
+        +'Respond with ONLY JSON: {"ranking":[{"no":"candidate number","score":0-100,"why":"one short sentence"}],"note":"one sentence, e.g. if none match well"} with the best 5, best first.'});
+      var cmp=await gemini(parts);
+      var rk=(cmp.ranking||[]).filter(function(r){return P.some(function(p){return p.n===String(r.no).toUpperCase().trim()})}).slice(0,5);
+      showResult(read,pk,rk,cmp.note||'');
+    }catch(e){msg((e&&e.message)||'Scan failed.',1)}
+    finally{busy=false;b.disabled=false}
+  }
+  function showResult(read,pk,rk,note){
+    var h='<div class="read"><div><span class="lbl">Read from photo</span></div>'
+      +'<div>Numbers: '+((read.numbers||[]).length?read.numbers.map(function(n){return '<b>'+esc(n)+'</b>'}).join(', '):'none readable')+(read.brand?' · Brand: '+esc(read.brand):'')+'</div>'
+      +((read.features||[]).length?'<div class="d" style="color:var(--mut)">'+esc(read.features.join(' · '))+'</div>':'')+'</div>';
+    if(pk.direct.length)h+='<div class="status"><span class="n">✅ Number found in the catalog</span></div><div class="grid">'+pk.direct.map(function(p){return card({p:p,s:null})}).join('')+'</div>';
+    if(rk.length){
+      h+='<div class="status"><span class="n">🤖 Closest shapes</span><span class="ex">'+(pk.sized?'Searched pads near your measurements':'Tip: type the width X for a better match')+'</span></div>';
+      h+='<div class="grid">'+rk.map(function(r,i){var p=P.find(function(x){return x.n===String(r.no).toUpperCase().trim()});
+        return card({p:p,s:null}).replace('<div class="hd">','<div class="hd"><span class="rank">#'+(i+1)+' · '+(Math.round(+r.score)||0)+'%</span></div><div class="why">'+esc(r.why||'')+'</div><div class="hd">')}).join('')+'</div>';
+    }
+    if(note)h+='<div class="scanmsg">'+esc(note)+'</div>';
+    $('scanOut').innerHTML=h;
+    msg('Done. Check the drawing against the pad before selling. Tap a card for details.');
+  }
+  $('bScan').onclick=scan;
+  $('scanOut').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
+
+  go();
+})();
+</script>
+
+</body>
+</html>
