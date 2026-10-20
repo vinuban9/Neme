@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14171b">
-<title>MK Pad Finder</title>
+<title>MK Brake Finder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
 <style>
@@ -115,27 +115,38 @@ dialog::backdrop{background:#000a}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>
+.modes{display:inline-grid;grid-template-columns:1fr 1fr;background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:3px;gap:3px}
+.modes button{border:0;background:transparent;color:var(--mut);border-radius:8px;padding:9px 18px;font:700 1rem var(--f-disp);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink)}
+.pcs{display:grid;gap:3px;font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
+.pcs .ln{font-weight:500}
+.pcs .x{color:var(--mut)}
+.fld datalist{display:none}
+</style>
 </head>
 <body>
-
-
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>MK Pad <b>Finder</b></h1>
-      <p>Scan or measure the customer's old pad and compare drawings from the MK Kashiyama disc pad catalog. Green cards are pads in your NEME POS list.</p>
+      <h1>MK Brake <b>Finder</b></h1>
+      <p>Scan or measure the customer's old part and compare drawings from the MK Kashiyama catalogs. Green cards are in your NEME POS list.</p>
     </div>
-    <span class="lbl" id="count">Loading catalog…</span>
+    <div class="modes" role="group" aria-label="Part type">
+      <button type="button" id="mPad" aria-pressed="true">Disc pads</button>
+      <button type="button" id="mShoe" aria-pressed="false">Brake shoes</button>
+    </div>
   </header>
+  <span class="lbl" id="count">Loading catalog…</span>
 
-  <section class="panel scan" aria-label="Scan a pad">
-    <div class="hd"><h2>Scan the old pad</h2><span class="lbl">AI · free Gemini</span></div>
-    <div class="scanmsg">Lay the pad flat on a plain surface and take the photo straight from above, backing plate side up. Typing the width X below as well makes the match much better.</div>
+  <section class="panel scan" aria-label="Scan">
+    <div class="hd"><h2 id="scanH">Scan the old pad</h2><span class="lbl">AI · free Gemini</span></div>
+    <div class="scanmsg" id="scanTip"></div>
     <div class="shots" id="shots"></div>
     <div class="scanrow">
       <button class="btn" type="button" id="bCam">📷 Camera</button>
       <button class="btn" type="button" id="bGal">🖼️ Gallery</button>
-      <button class="btn pri" type="button" id="bScan">🔍 Find this pad</button>
+      <button class="btn pri" type="button" id="bScan">🔍 Find it</button>
     </div>
     <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
     <input type="file" id="fGal" accept="image/*" multiple hidden>
@@ -145,38 +156,34 @@ dialog::backdrop{background:#000a}
 
   <section class="panel measure" aria-label="Measurements">
     <div class="mrow">
-      <div class="fld"><label class="lbl" for="x">Width X</label><input id="x" type="number" inputmode="decimal" step="0.1" min="0" placeholder="114.0"><span class="u">mm</span></div>
-      <div class="fld"><label class="lbl" for="y">Height Y</label><input id="y" type="number" inputmode="decimal" step="0.1" min="0" placeholder="47.0"><span class="u">mm</span></div>
-      <div class="fld"><label class="lbl" for="z">Thick Z</label><input id="z" type="number" inputmode="decimal" step="0.1" min="0" placeholder="15.0"><span class="u">mm, optional</span></div>
-      <div class="fld num"><label class="lbl" for="q">Or part number</label><input id="q" type="search" placeholder="D2053" autocomplete="off" spellcheck="false" style="text-transform:uppercase"><span class="u">MK number, any part of it</span></div>
+      <div class="fld"><label class="lbl" for="x" id="lx">Width X</label><input id="x" type="number" inputmode="decimal" step="0.1" min="0"><span class="u" id="ux">mm</span></div>
+      <div class="fld"><label class="lbl" for="y" id="ly">Height Y</label><input id="y" type="number" inputmode="decimal" step="0.1" min="0"><span class="u" id="uy">mm</span></div>
+      <div class="fld"><label class="lbl" for="z" id="lz">Thick Z</label><input id="z" type="number" inputmode="decimal" step="0.1" min="0"><span class="u" id="uz">mm, optional</span></div>
+      <div class="fld num"><label class="lbl" for="q">Or part number</label><input id="q" type="search" autocomplete="off" spellcheck="false" style="text-transform:uppercase"><span class="u" id="uq">MK number, any part of it</span></div>
     </div>
+    <div class="chips" id="drums" hidden></div>
     <div class="chips" id="makers" role="group" aria-label="Vehicle maker"></div>
     <div class="opts">
       <label for="tol">Match within
         <select id="tol" style="background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:4px 6px;color:var(--ink);font:inherit">
           <option value="1">±1 mm</option><option value="2" selected>±2 mm</option><option value="3">±3 mm</option><option value="5">±5 mm</option>
         </select></label>
-      <label><input type="checkbox" id="onlyStock"> Only pads in my stock list</label>
+      <label><input type="checkbox" id="onlyStock"> Only in my stock list</label>
       <label><input type="checkbox" id="hideDisc"> Hide discontinued</label>
-      <label><input type="checkbox" id="rearOnly"> Rear pads only</label>
+      <label for="posSel">Position
+        <select id="posSel" style="background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:4px 6px;color:var(--ink);font:inherit"></select></label>
     </div>
     <details class="help">
       <summary>How to measure</summary>
       <div class="howto" style="margin-top:10px">
-        <img alt="Pad diagram: X is full width, Y is height, Z is thickness" src="data:image/png;base64,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">
-        <ul>
-          <li><b>X</b> = full width of the backing plate, end to end, including the ears.</li>
-          <li><b>Y</b> = height of the backing plate.</li>
-          <li><b>Z</b> = new pad thickness without the shim. A worn pad will be thinner, so leave Z empty unless the pad is nearly new.</li>
-          <li>Use a vernier if you have one. Width alone usually narrows it down to a few pads, then compare the shapes.</li>
-          <li>The second digit of the number is the maker: D<b>2</b>xxx = Toyota, D<b>1</b>xxx = Nissan.</li>
-        </ul>
+        <img id="helpImg" alt="Measurement diagram" src="">
+        <ul id="helpList"></ul>
       </div>
     </details>
   </section>
 
   <div class="status"><span class="n" id="resN"></span><span class="ex" id="exNote"></span></div>
-  <div class="grid" id="grid"><div class="load">Loading 992 pad drawings…</div></div>
+  <div class="grid" id="grid"><div class="load">Loading drawings…</div></div>
   <button class="more" id="more" hidden>Show more</button>
 </div>
 
@@ -185,143 +192,214 @@ dialog::backdrop{background:#000a}
 <script src="pads-data.js"></script>
 <script>
 (function(){
-  var P=window.MK_PADS||[];
+  var $=function(id){return document.getElementById(id)};
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+  function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var $=function(id){return document.getElementById(id)};
-  var st={maker:'',limit:60};
-  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-  function makerOf(p){return MK[p.n.charAt(1)]||''}
-  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+  var LEG_PAD='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',LEG_SHOE='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';
+  var POS_SHOE={F:'Front',R:'Rear',P:'Parking'};
 
-  $('makers').innerHTML=MAKERS.filter(function(m){return m[0]===''||P.some(function(p){return p.n.charAt(1)===m[0]})}).map(function(m){
-    var c=m[0]===''?P.length:P.filter(function(p){return p.n.charAt(1)===m[0]}).length;
-    return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+m[1]+'<small>'+c+'</small></button>'}).join('');
+  // ---- normalise both catalogs into one shape: {n,p,i,s,dims:[[..]],disc,rear,tags,pieces?} ----
+  function padItems(){return (window.MK_PADS||[]).map(function(p){return {kind:'pad',n:p.n,p:p.p,i:p.i,s:p.s,r:p.r,d:p.d,f:p.f,
+    disc:p.f.indexOf('disc')>=0,ov:p.f.indexOf('overseas')>=0,pos:p.f.indexOf('rear')>=0?'R':(p.f.indexOf('fr')>=0?'FR':'F')}})}
+  function shoeItems(){return (window.MK_SHOES||[]).map(function(o){
+    var pcs=o.pc.map(function(c){return {ln:c[0],pos:c[1],core:c[2],disc:!!c[3],a:c[4],b:c[5],c:c[6],R:c[7]}});
+    var poss={};pcs.forEach(function(c){var k=(c.pos||'').charAt(0);if(c.pos.indexOf('&')>=0){poss.F=1;poss.R=1}else if(k)poss[k]=1});
+    return {kind:'shoe',n:o.n,p:o.p,i:o.i,s:o.s,r:[],pcs:pcs,disc:pcs.length>0&&pcs.every(function(c){return c.disc}),ov:!!o.ov,poss:poss,
+      set:o.n.split('-')[1]||''}})}
+
+  var MODE='pad',DATA={pad:null,shoe:null},st={maker:'',limit:60};
+  function items(){return DATA[MODE]||[]}
+
+  var CFG={
+    pad:{x:['Width X','mm','114.0'],y:['Height Y','mm','47.0'],z:['Thick Z','mm, optional','15.0'],q:'D2053',scanH:'Scan the old pad',
+      tip:'Lay the pad flat and take the photo straight from above, backing plate side up. Typing the width X as well makes the match much better.',
+      pos:[['','All'],['F','Front'],['R','Rear']],
+      help:['<b>X</b> = full width of the backing plate, end to end, including the ears.','<b>Y</b> = height of the backing plate.',
+        '<b>Z</b> = new pad thickness without the shim. Worn pads are thinner, so leave Z empty unless the pad is nearly new.',
+        'The second digit of the number is the maker: D<b>2</b>xxx = Toyota, D<b>1</b>xxx = Nissan.'],
+      example:{x:'114',y:'47',note:'Example: 114 × 47 mm. Type your own measurements.'}},
+    shoe:{x:['Drum Ø','mm (= 2 × R)','228.6'],y:['Lining width c','mm','42'],z:['Web a','mm, optional','3.5'],q:'Z2305 / K2305',scanH:'Scan the old shoe',
+      tip:'Lay the shoe flat on its side and photograph straight from above so the whole curve and the web holes show. Type the drum size or lining width too: shoes all look alike without a size.',
+      pos:[['','All'],['F','Front'],['R','Rear'],['P','Parking']],
+      help:['<b>Drum Ø</b> = inside diameter of the brake drum (often cast on the drum, e.g. 228.6 = 9 inch). The catalog lists the radius R; this page doubles it for you.',
+        '<b>c</b> = width of the lining (the friction material), measured across.','<b>a</b> = thickness of the steel web (the flat curved plate in the middle).',
+        'Z numbers are sets of 2 shoes; -10 and -20 are the two different shoes of one axle. Your stock uses K numbers: K2305 = Z2305.',
+        'The second digit of the number is the maker: Z<b>2</b>xxx = Toyota, Z<b>4</b>xxx = Isuzu.'],
+      example:{x:'228.6',y:'',note:'Example: 228.6 mm (9 inch) drum. Type your own size.'}}
+  };
+
+  function setMode(m,initial){
+    MODE=m;$('mPad').setAttribute('aria-pressed',m==='pad');$('mShoe').setAttribute('aria-pressed',m==='shoe');
+    var c=CFG[m];
+    ['x','y','z'].forEach(function(k){$('l'+k).textContent=c[k][0];$('u'+k).textContent=c[k][1];$(k).placeholder=c[k][2]});
+    $('q').placeholder=c.q;$('scanH').textContent=c.scanH;$('scanTip').textContent=c.tip;
+    $('posSel').innerHTML=c.pos.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>'}).join('');
+    $('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
+    $('helpList').innerHTML=c.help.map(function(h){return '<li>'+h+'</li>'}).join('');
+    $('drums').hidden=m!=='shoe';
+    $('scanOut').innerHTML='';msg('');
+    ls('mkf_mode',m);
+    load(m,function(){
+      var had=false;['x','y','z','q'].forEach(function(k){var v=ls('mkf_'+m+'_'+k);$(k).value=v||'';if(v)had=true});
+      $('exNote').textContent='';
+      if(!had){$('x').value=c.example.x;$('y').value=c.example.y;$('exNote').textContent=c.example.note}
+      buildChips();go();
+    });
+  }
+  function load(m,cb){
+    if(DATA[m])return cb();
+    var fn=m==='pad'?padItems:shoeItems,glob=m==='pad'?'MK_PADS':'MK_SHOES';
+    if(window[glob]){DATA[m]=fn();return cb()}
+    $('grid').innerHTML='<div class="load">Loading brake shoe drawings…</div>';
+    var s=document.createElement('script');s.src=(m==='pad'?'pads':'shoes')+'-data.js';
+    s.onload=function(){DATA[m]=fn();cb()};s.onerror=function(){$('grid').innerHTML='<div class="empty">Could not load the catalog. Check your internet and reload.</div>'};
+    document.head.appendChild(s);
+  }
+  function buildChips(){
+    var P=items();
+    $('makers').innerHTML=MAKERS.filter(function(m){return m[0]===''||P.some(function(p){return p.n.charAt(1)===m[0]})}).map(function(m){
+      var c=m[0]===''?P.length:P.filter(function(p){return p.n.charAt(1)===m[0]}).length;
+      return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+m[1]+'<small>'+c+'</small></button>'}).join('');
+    $('count').textContent=P.length+(MODE==='pad'?' pads':' shoe sets')+' · '+P.filter(function(p){return p.s.length}).length+' in your list';
+    if(MODE==='shoe'){
+      var cnt={};P.forEach(function(p){p.pcs.forEach(function(c){if(c.R)cnt[(c.R*2).toFixed(1)]=(cnt[(c.R*2).toFixed(1)]||0)+1})});
+      var top=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}).slice(0,8).sort(function(a,b){return a-b});
+      $('drums').innerHTML='<span class="lbl" style="align-self:center">Common drums</span>'+top.map(function(d){
+        var inch=d/25.4,lab=Math.abs(inch-Math.round(inch*2)/2)<0.02?' ('+(Math.round(inch*2)/2)+'″)':'';
+        return '<button class="chip" type="button" data-drum="'+d+'">'+(+d)+lab+'<small>'+cnt[d]+'</small></button>'}).join('');
+    }
+  }
+  $('drums').addEventListener('click',function(e){var b=e.target.closest('[data-drum]');if(!b)return;$('x').value=b.dataset.drum;$('exNote').textContent='';go()});
   $('makers').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;st.maker=b.dataset.m;
     [].forEach.call(this.children,function(c){c.setAttribute('aria-pressed',c===b)});go()});
-  $('count').textContent=P.length+' pads · '+P.filter(function(p){return p.s.length}).length+' in your list';
+  $('mPad').onclick=function(){if(MODE!=='pad')setMode('pad')};
+  $('mShoe').onclick=function(){if(MODE!=='shoe')setMode('shoe')};
 
-  // Distance of a pad from the measurement: best of its drawings (some cells show inner + outer pads)
+  // ---- matching ----
+  // Returns the best-fitting variant: {t: total mm off, parts:[diffs], v: the matched values}
   function score(p,x,y,z){
-    if(!p.d.length)return null;
     var best=null;
-    p.d.forEach(function(d){
-      var dx=x?Math.abs(d[0]-x):0,dy=y?Math.abs(d[1]-y):0,dz=z?Math.abs(d[2]-z):0;
-      var s={dx:dx,dy:dy,dz:dz,d:d,t:dx+dy+dz*0.5};
-      if(!best||s.t<best.t)best=s});
+    if(p.kind==='pad'){
+      p.d.forEach(function(d){var dx=x?Math.abs(d[0]-x):0,dy=y?Math.abs(d[1]-y):0,dz=z?Math.abs(d[2]-z):0;
+        var s={t:dx+dy+dz*0.5,df:[x?dx:null,y?dy:null,z?dz:null],v:d,ok:function(t){return dx<=t&&dy<=t&&dz<=t+1}};if(!best||s.t<best.t)best=s});
+    }else{
+      p.pcs.forEach(function(c){if(!c.R)return;var D=c.R*2,dx=x?Math.abs(D-x):0,dy=y?Math.abs(c.c-y):0,dz=z?Math.abs(c.a-z):0;
+        var s={t:dx+dy*1.5+dz,df:[x?dx:null,y?dy:null,z?dz:null],v:c,ok:function(t){return dx<=t*1.5&&dy<=t&&dz<=Math.max(0.6,t/2)}};if(!best||s.t<best.t)best=s});
+    }
     return best;
   }
+  function posOk(p,pos){if(!pos)return true;return p.kind==='pad'?(pos==='R'?p.pos!=='F':p.pos!=='R'):!!p.poss[pos]}
   function filtered(){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0;
-    var q=$('q').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-    var tol=parseFloat($('tol').value)||2;
+    var q=norm($('q').value),tol=parseFloat($('tol').value)||2,pos=$('posSel').value;
+    if(MODE==='shoe'&&/^K\d/.test(q))q='Z'+q.slice(1);
     var out=[];
-    P.forEach(function(p){
+    items().forEach(function(p){
       if(st.maker&&p.n.charAt(1)!==st.maker)return;
       if($('onlyStock').checked&&!p.s.length)return;
-      if($('hideDisc').checked&&p.f.indexOf('disc')>=0)return;
-      if($('rearOnly').checked&&p.f.indexOf('rear')<0)return;
-      if(q&&p.n.indexOf(q)<0&&!p.r.some(function(r){return r.indexOf(q)>=0}))return;
+      if($('hideDisc').checked&&p.disc)return;
+      if(!posOk(p,pos))return;
+      if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ');if(hay.indexOf(q)<0)return}
       var s=null;
-      if(x||y||z){s=score(p,x,y,z);if(!s||s.dx>tol||s.dy>tol||s.dz>tol+1)return}
+      if(x||y||z){s=score(p,x,y,z);if(!s||!s.ok(tol))return}
       out.push({p:p,s:s});
     });
     if(x||y||z)out.sort(function(a,b){return a.s.t-b.s.t||(b.p.s.length-a.p.s.length)});
     else out.sort(function(a,b){return (b.p.s.length-a.p.s.length)||a.p.n.localeCompare(b.p.n)});
-    return {list:out,x:x,y:y,z:z};
+    return {list:out,any:!!(x||y||z)};
   }
-  function cls(v){return v<=0.6?'good':v<=1.5?'near':''}
+  function cls(v){return v==null?'':v<=0.6?'good':v<=1.5?'near':''}
+  function sp(lab,val,diff){return '<span class="'+cls(diff)+'">'+lab+' '+(+val).toFixed(1).replace(/\.0$/,'')+'</span>'}
   function dimsHtml(r){
-    var p=r.p;if(!p.d.length)return '<div class="dims d">Size not printed in catalog</div>';
-    var d=r.s?r.s.d:p.d[0];
-    var part=function(lab,val,diff){return '<span class="'+(diff==null?'':cls(diff))+'">'+lab+' '+val.toFixed(1)+'</span>'};
-    return '<div class="dims">'+part('X',d[0],r.s&&$('x').value?r.s.dx:null)+' · '+part('Y',d[1],r.s&&$('y').value?r.s.dy:null)+' · '+part('Z',d[2],r.s&&$('z').value?r.s.dz:null)
-      +(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
+    var p=r.p,df=r.s?r.s.df:[null,null,null];
+    if(p.kind==='pad'){
+      if(!p.d.length)return '<div class="dims d">Size not printed in catalog</div>';
+      var d=r.s?r.s.v:p.d[0];
+      return '<div class="dims">'+sp('X',d[0],df[0])+' · '+sp('Y',d[1],df[1])+' · '+sp('Z',d[2],df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
+    }
+    if(!p.pcs.length)return '<div class="dims d">Export only, no drawing</div>';
+    return '<div class="pcs">'+p.pcs.map(function(c){var m=r.s&&r.s.v===c;
+      return '<div><span class="ln">'+esc(c.ln)+'</span> <span class="x">'+esc(c.pos)+'</span><br>'
+        +(c.R?sp('Ø',c.R*2,m?df[0]:null)+' · '+sp('c',c.c,m?df[1]:null)+' · '+sp('a',c.a,m?df[2]:null):'<span class="x">no size</span>')+'</div>'}).join('')+'</div>';
   }
   function tags(p){
     var t='';
     if(p.s.length)t+='<span class="tag stock">In my list</span>';
-    if(p.f.indexOf('rear')>=0)t+='<span class="tag rear">Rear</span>';
-    if(p.f.indexOf('fr')>=0)t+='<span class="tag rear">Front &amp; rear</span>';
-    if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
-    if(p.f.indexOf('disc')>=0)t+='<span class="tag disc">Discontinued</span>';
-    if(p.f.indexOf('overseas')>=0)t+='<span class="tag">Export only</span>';
+    if(p.kind==='pad'){
+      if(p.pos==='R')t+='<span class="tag rear">Rear</span>';if(p.pos==='FR')t+='<span class="tag rear">Front &amp; rear</span>';
+      if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
+    }else{
+      ['F','R','P'].forEach(function(k){if(p.poss[k])t+='<span class="tag rear">'+POS_SHOE[k]+'</span>'});
+      if(p.set==='10')t+='<span class="tag">Shoe -10</span>';if(p.set==='20')t+='<span class="tag">Shoe -20</span>';
+    }
+    if(p.disc)t+='<span class="tag disc">Discontinued</span>';
+    if(p.ov)t+='<span class="tag">Export only</span>';
     return t?'<div class="tags">'+t+'</div>':'';
   }
-  function card(r){
+  function makerOf(p){return MK[p.n.charAt(1)]||''}
+  function card(r,extra){
     var p=r.p;
     return '<button class="card'+(p.s.length?' instock':'')+'" type="button" data-n="'+p.n+'">'
       +'<div class="pic">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>'
-      +'<div class="body"><div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
-      +dimsHtml(r)+tags(p)
-      +(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')
-      +'</div></button>';
+      +'<div class="body">'+(extra||'')+'<div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
+      +dimsHtml(r)+tags(p)+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
   }
-  var last=null;
   function go(keep){
     if(!keep)st.limit=60;
-    var f=filtered();last=f;
-    var any=f.x||f.y||f.z;
-    $('resN').textContent=f.list.length?(f.list.length+(any?' pads match that size':' pads')):'No pads match';
-    $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(card).join('')
-      :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check you measured X across the ears.</div>';
+    var f=filtered();
+    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':(MODE==='pad'?' pads':' shoe sets'))):'Nothing matches';
+    $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(function(r){return card(r)}).join('')
+      :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check how you measured (see How to measure).</div>';
     $('more').hidden=f.list.length<=st.limit;
-    ['x','y','z','q','tol'].forEach(function(k){ls('mkpf_'+k,$(k).value)});
+    ['x','y','z','q'].forEach(function(k){ls('mkf_'+MODE+'_'+k,$(k).value)});
   }
   $('more').onclick=function(){st.limit+=60;go(true)};
   ['x','y','z','q'].forEach(function(k){$(k).addEventListener('input',function(){$('exNote').textContent='';go()})});
-  ['tol','onlyStock','hideDisc','rearOnly'].forEach(function(k){$(k).addEventListener('change',function(){go()})});
+  ['tol','onlyStock','hideDisc','posSel'].forEach(function(k){$(k).addEventListener('change',function(){go()})});
 
-  $('grid').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
   function openCard(n){
-    var p=P.find(function(x){return x.n===n});if(!p)return;
+    var p=items().find(function(x){return x.n===n});if(!p)return;
+    var size=p.kind==='pad'?(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')
+      :(p.pcs.length?p.pcs.map(function(c){return '<b>'+esc(c.ln)+'</b> '+esc(c.pos)+(c.disc?' (discontinued)':'')+'<br>'+(c.R?'Drum Ø '+(c.R*2)+' (R '+c.R+') · c '+c.c+' · a '+c.a+' · b '+c.b:'no size')+(c.core?' · core '+esc(c.core):'')}).join('<br>'):'Export only');
     var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
       +(p.i?'<div class="pic"><img alt="Drawing of '+p.n+'" src="'+p.i+'"></div>':'')
-      +'<dl class="kv">'
-      +'<dt>Maker code</dt><dd>'+(makerOf(p)||'-')+'</dd>'
-      +'<dt>Size</dt><dd class="dims">'+(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')+'</dd>'
+      +'<dl class="kv"><dt>Maker code</dt><dd>'+(makerOf(p)||'-')+'</dd>'
+      +'<dt>'+(p.kind==='pad'?'Size':'Shoes')+'</dt><dd class="dims">'+size+'</dd>'
       +'<dt>Catalog page</dt><dd>'+p.p+'</dd>'
-      +(p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
-      +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd>'
-      +'</dl>'+tags(p)
-      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+p.n+'">Search '+p.n+' on Google</a></div>';
-    $('dlgBody').innerHTML=h;$('dlg').showModal();
-    $('dlgX').onclick=function(){$('dlg').close()};
+      +(p.r&&p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
+      +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'+tags(p)
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+encodeURIComponent(p.n)+'">Search '+p.n+' on Google</a></div>';
+    $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
+  $('grid').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
+  $('scanOut').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
   $('dlgBody').addEventListener('click',function(e){var a=e.target.closest('[data-goto]');if(!a)return;e.preventDefault();
     $('dlg').close();$('x').value=$('y').value=$('z').value='';$('q').value=a.dataset.goto;$('exNote').textContent='';go();window.scrollTo(0,0)});
   $('dlg').addEventListener('click',function(e){if(e.target===this)this.close()});
 
-  // Restore last search, else open with a worked example (an MK pad that is in the stock list)
-  var had=false;['x','y','z','q','tol'].forEach(function(k){var v=ls('mkpf_'+k);if(v){$(k).value=v;if(k!=='tol')had=true}});
-  if(!had){$('x').value='114';$('y').value='47';$('exNote').textContent='Example: 114 × 47 mm. Type your own measurements.'}
-
-  /* ================= SCAN: photo -> Gemini reads it -> Gemini compares with catalog drawings ================= */
+  /* ================= SCAN ================= */
   var shots=[],busy=false;
-  function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   function readFile(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=no;r.readAsDataURL(f)})}
   function shrink(url,max){return new Promise(function(ok,no){var im=new Image();im.onload=function(){
     var k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
     c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',0.86))};im.onerror=no;im.src=url})}
-  function renderShots(){
-    $('shots').innerHTML=shots.map(function(u,i){return '<div class="shot"><img src="'+u+'" alt="Pad photo '+(i+1)+'"><button type="button" data-del="'+i+'" aria-label="Remove photo">✕</button></div>'}).join('');
-  }
+  function renderShots(){$('shots').innerHTML=shots.map(function(u,i){return '<div class="shot"><img src="'+u+'" alt="Photo '+(i+1)+'"><button type="button" data-del="'+i+'" aria-label="Remove photo">✕</button></div>'}).join('')}
   async function addFiles(list){
     var a=[].slice.call(list||[]);
-    for(var i=0;i<a.length;i++){if(shots.length>=2){msg('Two photos are enough: one whole pad, one close-up of any numbers.');break}
+    for(var i=0;i<a.length;i++){if(shots.length>=2){msg('Two photos are enough: the whole part, and a close-up of any numbers.');break}
       try{shots.push(await shrink(await readFile(a[i]),1400))}catch(e){msg('Could not open that photo.',1)}}
     renderShots();
   }
-  $('bCam').onclick=function(){$('fCam').click()};
-  $('bGal').onclick=function(){$('fGal').click()};
-  $('fCam').onchange=function(e){addFiles(e.target.files);e.target.value=''};
-  $('fGal').onchange=function(e){addFiles(e.target.files);e.target.value=''};
+  $('bCam').onclick=function(){$('fCam').click()};$('bGal').onclick=function(){$('fGal').click()};
+  $('fCam').onchange=function(e){addFiles(e.target.files);e.target.value=''};$('fGal').onchange=function(e){addFiles(e.target.files);e.target.value=''};
   $('shots').onclick=function(e){var b=e.target.closest('[data-del]');if(b){shots.splice(+b.dataset.del,1);renderShots()}};
   document.addEventListener('paste',function(e){var it=(e.clipboardData&&e.clipboardData.items)||[],f=[];
     for(var i=0;i<it.length;i++)if(it[i].kind==='file'&&/^image\//.test(it[i].type))f.push(it[i].getAsFile());if(f.length){e.preventDefault();addFiles(f)}});
   function msg(t,err){$('scanMsg').innerHTML=t;$('scanMsg').className='scanmsg'+(err?' err':'')}
 
-  // ---- Gemini (same free key the POS uses: same site, same saved key) ----
   function getKey(){
     var k='';try{k=localStorage.getItem('neme_gemini_api_key')||''}catch(e){}
     if(!k){k=(window.prompt('Paste your FREE Google Gemini API key (the same one the POS invoice scanner uses):')||'').trim();
@@ -362,79 +440,80 @@ dialog::backdrop{background:#000a}
   }
   function img64(u){return {inline_data:{mime_type:u.indexOf('image/png')>0?'image/png':'image/jpeg',data:u.split(',')[1]}}}
 
-  var READ_PROMPT='These photos show a used DISC BRAKE PAD a customer brought to an auto parts shop in Sri Lanka. '
-   +'Respond with ONLY JSON:\n{"isBrakePad":true,'
-   +'"numbers":["every code printed or stamped on the backing plate or lining, exactly as written, e.g. D2053M, FDB1234, AN-456K"],'
-   +'"brand":"brand text visible or \\"\\"",'
-   +'"ratio":0.42,'
-   +'"ears":"none|one side|both sides",'
-   +'"features":["short facts about the outline: centre slot, wear-indicator clip, notches, tabs, holes, chamfered ends, curved top edge, shim"],'
-   +'"position":"front|rear|unknown"}\n'
-   +'ratio = height divided by width of the BACKING PLATE outline as seen from above (estimate carefully, 0.25-0.9). '
-   +'Read digits carefully (0/O, 1/I, 5/S, 8/B). Never invent numbers; empty list if none are readable.';
-
+  var READ={
+    pad:'These photos show a used DISC BRAKE PAD a customer brought to an auto parts shop in Sri Lanka. Respond with ONLY JSON:\n'
+      +'{"isPart":true,"numbers":["every code printed or stamped on the backing plate or lining, exactly as written, e.g. D2053M, FDB1234"],"brand":"","ratio":0.42,'
+      +'"features":["short facts about the outline: centre slot, wear-indicator clip, notches, tabs, holes, curved top edge, shim"],"position":"front|rear|unknown"}\n'
+      +'isPart=false if it is not a disc brake pad. ratio = height divided by width of the BACKING PLATE seen from above (0.25-0.9). Read digits carefully (0/O, 1/I, 5/S, 8/B). Never invent numbers.',
+    shoe:'These photos show a used DRUM BRAKE SHOE a customer brought to an auto parts shop in Sri Lanka. Respond with ONLY JSON:\n'
+      +'{"isPart":true,"numbers":["every code printed or stamped on the web, rim or lining, exactly as written, e.g. K2305, LN2305, M2305"],"brand":"",'
+      +'"features":["short facts about the WEB outline: number and position of holes, spring hooks, notches at each end, adjuster slot, parking-lever pin or lever, wear-indicator, lining covers full or partial arc"],'
+      +'"parking":false}\nisPart=false if it is not a drum brake shoe. parking=true if a parking-brake lever or pin is fitted. Read digits carefully. Never invent numbers.'
+  };
   function pickPool(read){
-    var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0;
-    // 1) any number the AI read that is an MK catalog number
+    var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0,P=items();
     var direct=[];
-    (read.numbers||[]).forEach(function(n){var k=norm(n).match(/[DS]\d{4}[A-Z]?/);if(!k)return;
-      P.forEach(function(p){if(p.i&&(p.n===k[0]||p.n.replace(/M$/,'')===k[0].replace(/M$/,''))&&direct.indexOf(p)<0)direct.push(p)})});
-    // 2) shape candidates by size (if typed) or by outline ratio from the photo
-    var base=P.filter(function(p){return p.i&&p.d.length&&(!st.maker||p.n.charAt(1)===st.maker)});
-    var tol=Math.max(parseFloat($('tol').value)||2,2);
-    if(x||y)base=base.filter(function(p){return p.d.some(function(d){return (!x||Math.abs(d[0]-x)<=tol+1)&&(!y||Math.abs(d[1]-y)<=tol+1)})});
-    if(read.position==='rear')base.sort(function(a,b){return (b.f.indexOf('rear')>=0)-(a.f.indexOf('rear')>=0)});
-    var r=+read.ratio||0;
-    base.sort(function(a,b){
-      var ra=Math.min.apply(null,a.d.map(function(d){return Math.abs(d[1]/d[0]-r)})),rb=Math.min.apply(null,b.d.map(function(d){return Math.abs(d[1]/d[0]-r)}));
-      var sa=(x?Math.abs(a.d[0][0]-x)/20:0)+(r?ra:0),sb=(x?Math.abs(b.d[0][0]-x)/20:0)+(r?rb:0);return sa-sb});
-    var pool=direct.concat(base.filter(function(p){return direct.indexOf(p)<0})).slice(0,x||y?14:18);
-    return {pool:pool,direct:direct,sized:!!(x||y)};
+    (read.numbers||[]).forEach(function(n){var k=norm(n),m=MODE==='pad'?k.match(/[DS]\d{4}[A-Z]?/):k.match(/(?:K|Z|LN|M)(\d{4}[A-Z]?)/);if(!m)return;
+      P.forEach(function(p){if(!p.i||direct.indexOf(p)>=0)return;
+        var hit=MODE==='pad'?(p.n===m[0]||p.n.replace(/M$/,'')===m[0].replace(/M$/,'')):(p.n.slice(1,5)===m[1].slice(0,4)||p.pcs.some(function(c){return c.ln.slice(2)===m[1]||c.core.slice(1)===m[1]}));
+        if(hit)direct.push(p)})});
+    var tol=Math.max(parseFloat($('tol').value)||2,2),pos=$('posSel').value;
+    var base=P.filter(function(p){return p.i&&(!st.maker||p.n.charAt(1)===st.maker)&&posOk(p,pos)&&(MODE==='pad'?p.d.length:p.pcs.some(function(c){return c.R}))});
+    var sized=!!(x||y||z);
+    if(sized)base=base.filter(function(p){var s=score(p,x,y,z);return s&&s.ok(tol+1)}).sort(function(a,b){return score(a,x,y,z).t-score(b,x,y,z).t});
+    if(MODE==='pad'&&read.ratio){var r=+read.ratio;base.sort(function(a,b){
+      var f=function(p){return Math.min.apply(null,p.d.map(function(d){return Math.abs(d[1]/d[0]-r)}))+(x?Math.abs(p.d[0][0]-x)/20:0)};return f(a)-f(b)})}
+    if(MODE==='shoe'&&read.parking)base.sort(function(a,b){return (b.poss.P?1:0)-(a.poss.P?1:0)});
+    return {pool:direct.concat(base.filter(function(p){return direct.indexOf(p)<0})).slice(0,sized?14:18),direct:direct,sized:sized};
   }
-
   async function scan(){
     if(busy)return;
-    if(!shots.length){msg('Take or choose a photo of the pad first.',1);return}
+    if(!shots.length){msg('Take or choose a photo first.',1);return}
+    var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0;
     busy=true;var b=$('bScan');b.disabled=true;$('scanOut').innerHTML='';
     try{
-      msg('<span class="spin"></span> Step 1 of 2: reading the pad…');
-      var read=await gemini(shots.map(img64).concat([{text:READ_PROMPT}]));
-      if(read.isBrakePad===false){msg('That photo does not look like a disc brake pad. Try again, straight from above.',1);return}
+      msg('<span class="spin"></span> Step 1 of 2: reading the photo…');
+      var read=await gemini(shots.map(img64).concat([{text:READ[MODE]}]));
+      if(read.isPart===false){msg('That photo does not look like a '+(MODE==='pad'?'disc brake pad':'brake shoe')+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
       var pk=pickPool(read);
-      if(!pk.pool.length){msg('No catalog pads fit those sizes. Clear the width/height or widen the range, then scan again.',1);return}
+      if(MODE==='shoe'&&!pk.direct.length&&!x&&!y){showResult(read,pk,[],'');msg('No number found on the shoe. Shoes look very alike, so type the drum size or lining width above, then tap Find it again.',1);return}
+      if(!pk.pool.length){showResult(read,pk,[],'');msg('No catalog items fit those sizes. Widen the range or clear a size, then scan again.',1);return}
       msg('<span class="spin"></span> Step 2 of 2: comparing with '+pk.pool.length+' catalog drawings…');
       var parts=shots.map(img64);
-      parts.push({text:'Above: photo(s) of the customer\'s worn brake pad. Below: candidate catalog line drawings (MK Kashiyama). Each drawing is labelled with its number.'});
-      pk.pool.forEach(function(p){parts.push({text:'Candidate '+p.n+' (X '+p.d[0][0]+' mm, Y '+p.d[0][1]+' mm):'});parts.push(img64(p.i))});
-      parts.push({text:'Which candidate has the SAME backing-plate outline as the photographed pad? Compare: overall proportions, ear/tab shapes at the ends, notches, curve of the top and bottom edges, centre slot, wear-indicator position. '
-        +'Ignore the friction material wear and dirt. '+(read.numbers&&read.numbers.length?'Numbers read from the pad: '+read.numbers.join(', ')+'. ':'')
+      parts.push({text:'Above: photo(s) of the customer\'s worn '+(MODE==='pad'?'brake pad':'brake shoe')+'. Below: candidate MK Kashiyama catalog line drawings, each labelled with its number.'});
+      pk.pool.forEach(function(p){
+        var lab=MODE==='pad'?'X '+p.d[0][0]+' mm, Y '+p.d[0][1]+' mm':p.pcs.map(function(c){return c.ln+' '+c.pos+(c.R?' drum '+(c.R*2)+' mm, lining '+c.c+' mm':'')}).join('; ');
+        parts.push({text:'Candidate '+p.n+' ('+lab+'):'});parts.push(img64(p.i))});
+      parts.push({text:(MODE==='pad'
+          ?'Which candidate has the SAME backing-plate outline as the photographed pad? Compare overall proportions, ear/tab shapes at the ends, notches, curve of top and bottom edges, centre slot, wear-indicator position. Ignore lining wear and dirt. '
+          :'Which candidate has the SAME shoe web outline as the photographed shoe? Compare the web shape, number and position of holes, spring-hook holes, end notches (anchor and adjuster ends), parking-lever pin. A set drawing may show two shoes; match either one. Mirror images (left/right) count as the same set. Ignore lining wear and rust. ')
+        +(read.numbers&&read.numbers.length?'Numbers read from the part: '+read.numbers.join(', ')+'. ':'')
         +'Respond with ONLY JSON: {"ranking":[{"no":"candidate number","score":0-100,"why":"one short sentence"}],"note":"one sentence, e.g. if none match well"} with the best 5, best first.'});
-      var cmp=await gemini(parts);
+      var cmp=await gemini(parts),P=items();
       var rk=(cmp.ranking||[]).filter(function(r){return P.some(function(p){return p.n===String(r.no).toUpperCase().trim()})}).slice(0,5);
       showResult(read,pk,rk,cmp.note||'');
+      msg('Done. Check the drawing against the part before selling. Tap a card for details.');
     }catch(e){msg((e&&e.message)||'Scan failed.',1)}
     finally{busy=false;b.disabled=false}
   }
   function showResult(read,pk,rk,note){
+    var P=items();
     var h='<div class="read"><div><span class="lbl">Read from photo</span></div>'
       +'<div>Numbers: '+((read.numbers||[]).length?read.numbers.map(function(n){return '<b>'+esc(n)+'</b>'}).join(', '):'none readable')+(read.brand?' · Brand: '+esc(read.brand):'')+'</div>'
-      +((read.features||[]).length?'<div class="d" style="color:var(--mut)">'+esc(read.features.join(' · '))+'</div>':'')+'</div>';
+      +((read.features||[]).length?'<div style="color:var(--mut)">'+esc(read.features.join(' · '))+'</div>':'')+'</div>';
     if(pk.direct.length)h+='<div class="status"><span class="n">✅ Number found in the catalog</span></div><div class="grid">'+pk.direct.map(function(p){return card({p:p,s:null})}).join('')+'</div>';
     if(rk.length){
-      h+='<div class="status"><span class="n">🤖 Closest shapes</span><span class="ex">'+(pk.sized?'Searched pads near your measurements':'Tip: type the width X for a better match')+'</span></div>';
+      h+='<div class="status"><span class="n">🤖 Closest shapes</span><span class="ex">'+(pk.sized?'Searched near your measurements':'Tip: type a size for a better match')+'</span></div>';
       h+='<div class="grid">'+rk.map(function(r,i){var p=P.find(function(x){return x.n===String(r.no).toUpperCase().trim()});
-        return card({p:p,s:null}).replace('<div class="hd">','<div class="hd"><span class="rank">#'+(i+1)+' · '+(Math.round(+r.score)||0)+'%</span></div><div class="why">'+esc(r.why||'')+'</div><div class="hd">')}).join('')+'</div>';
+        return card({p:p,s:null},'<div class="hd"><span class="rank">#'+(i+1)+' · '+(Math.round(+r.score)||0)+'%</span></div><div class="why">'+esc(r.why||'')+'</div>')}).join('')+'</div>';
     }
     if(note)h+='<div class="scanmsg">'+esc(note)+'</div>';
     $('scanOut').innerHTML=h;
-    msg('Done. Check the drawing against the pad before selling. Tap a card for details.');
   }
   $('bScan').onclick=scan;
-  $('scanOut').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
 
-  go();
+  setMode(ls('mkf_mode')==='shoe'?'shoe':'pad',true);
 })();
 </script>
-
 </body>
 </html>
