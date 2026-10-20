@@ -344,7 +344,7 @@ dialog::backdrop{background:#000a}
     for(var i=0;i<ms.length;i++){
       for(var t=0;t<2;t++){
         var r;try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+ms[i]+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({contents:[{parts:parts}],generationConfig:{temperature:0,responseMimeType:'application/json',maxOutputTokens:4096}})})}
+          body:JSON.stringify({contents:[{parts:parts}],generationConfig:{temperature:0,responseMimeType:'application/json',maxOutputTokens:16384}})})}
         catch(e){last='No internet connection';continue}
         if(!r.ok){var tx=await r.text();last='HTTP '+r.status;try{last+=': '+JSON.parse(tx).error.message}catch(e){}
           if(tx.indexOf('API_KEY_INVALID')>=0){try{localStorage.removeItem('neme_gemini_api_key')}catch(e){}throw new Error('That Gemini key is not valid. Tap Find again to enter it.')}
@@ -353,11 +353,12 @@ dialog::backdrop{background:#000a}
         var d=await r.json(),c=(d.candidates&&d.candidates[0])||{};
         var txt=((c.content&&c.content.parts)||[]).map(function(p){return p.text||''}).join('').replace(/```json|```/g,'');
         var a=txt.indexOf('{'),b=txt.lastIndexOf('}');
-        if(a>=0&&b>a){try{return JSON.parse(txt.slice(a,b+1))}catch(e){last='Unreadable AI reply'}}
-        else last='Empty AI reply';
+        if(a>=0&&b>a){try{return JSON.parse(txt.slice(a,b+1))}catch(e){last='Reply cut off ('+(c.finishReason||'?')+') on '+ms[i]}}
+        else last='Empty reply ('+(c.finishReason||(d.promptFeedback&&d.promptFeedback.blockReason)||'?')+') on '+ms[i];
+        if(c.finishReason==='MAX_TOKENS'||c.finishReason==='SAFETY')break;
       }
     }
-    throw new Error(last||'AI is not available right now.');
+    throw new Error('AI could not read it: '+(last||'not available right now')+'. Send this message to Claude if it keeps happening.');
   }
   function img64(u){return {inline_data:{mime_type:u.indexOf('image/png')>0?'image/png':'image/jpeg',data:u.split(',')[1]}}}
 
