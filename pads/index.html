@@ -116,7 +116,7 @@ dialog::backdrop{background:#000a}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
-.modes{display:inline-grid;grid-template-columns:repeat(4,auto);background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:3px;gap:3px}
+.modes{display:inline-grid;grid-template-columns:repeat(5,auto);background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:3px;gap:3px}
 .modes button{border:0;background:transparent;color:var(--mut);border-radius:8px;padding:9px 18px;font:700 1rem var(--f-disp);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .modes button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink)}
 .pcs{display:grid;gap:3px;font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
@@ -133,6 +133,9 @@ dialog::backdrop{background:#000a}
 .veh{font-size:.8rem;color:var(--mut)}
 .reflist{font-family:var(--f-mono);font-size:.85rem;display:flex;flex-wrap:wrap;gap:4px 10px;max-height:30dvh;overflow:auto}
 .reflist span.hit{color:var(--acc);font-weight:500}
+.card .pic.photo{background:#fff}
+.mrow.reg .fld:not(.num){display:none}
+.mrow.reg{grid-template-columns:1fr}
 </style>
 </head>
 <body>
@@ -140,13 +143,14 @@ dialog::backdrop{background:#000a}
   <header class="top">
     <div>
       <h1>NEME Parts <b>Finder</b></h1>
-      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama and EXEDY catalogs. Green cards are in your NEME POS list.</p>
+      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY and New-Era catalogs. Green cards are in your NEME POS list.</p>
     </div>
     <div class="modes" role="group" aria-label="Part type">
       <button type="button" id="mPad" aria-pressed="true">Disc pads</button>
       <button type="button" id="mShoe" aria-pressed="false">Brake shoes</button>
       <button type="button" id="mDisc" aria-pressed="false">Clutch disc</button>
       <button type="button" id="mCover" aria-pressed="false">Clutch cover</button>
+      <button type="button" id="mReg" aria-pressed="false">Regulators</button>
     </div>
   </header>
   <span class="lbl" id="count">Loading catalog…</span>
@@ -219,6 +223,13 @@ dialog::backdrop{background:#000a}
   function mkKey(p){return (p.kind==='disc'||p.kind==='cover')?p.n.slice(0,2):p.n.charAt(1)}
   function mkName(p){var k=mkKey(p);return (p.kind==='disc'||p.kind==='cover')?(EXMK[k]||k):(MK[k]||'')}
   function isCl(){return MODE==='disc'||MODE==='cover'}
+  function isReg(){return MODE==='reg'}
+  var REGBR={ND:'Denso',MI:'Mitsubishi',HI:'Hitachi',BO:'Bosch',NK:'Nikko',SF:'Sawafuji'};
+  function regItems(){return (window.NE_REG||[]).map(function(o){
+    var refs=o.r.map(function(r){return r[0]+(r[1]?' '+r[1]:'')}),brs={};o.r.forEach(function(r){if(REGBR[r[1]])brs[r[1]]=1});
+    var veh=[];o.a.forEach(function(a){a[1].forEach(function(l){veh.push((a[0]?a[0]+' ':'')+l)})});
+    return {kind:'reg',n:o.n,v:o.v,p:o.p,i:o.i,s:[],refs:refs,rn:o.r.map(function(r){return norm(r[0])}),mk:o.mk,app:o.a,veh:veh,nt:o.nt,brs:Object.keys(brs),
+      disc:false,r:[],of:[],ac:o.n.charAt(0)==='A'}})}
 
   // ---- normalise both catalogs into one shape: {n,p,i,s,dims:[[..]],disc,rear,tags,pieces?} ----
   function padItems(){return (window.MK_PADS||[]).map(function(p){return {kind:'pad',n:p.n,p:p.p,i:p.i,s:p.s,r:p.r,d:p.d,f:p.f,
@@ -232,7 +243,7 @@ dialog::backdrop{background:#000a}
   function clutchItems(kind){return (window.EX_CLUTCH||[]).filter(function(c){return c.k===kind}).map(function(c){
     var refs=c.r||[];return {kind:kind,n:c.n,s:c.s||[],d:c.d||null,refs:refs,rn:refs.map(norm),v:c.v||[],o:c.o||null,of:c.of||[],nw:!!c.nw,
       disc:!!c.o,r:[],i:null}})}
-  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null},st={maker:'',limit:60};
+  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null,reg:null},st={maker:'',limit:60,brand:''};
   function items(){return DATA[MODE]||[]}
 
   var CFG={
@@ -265,19 +276,28 @@ dialog::backdrop{background:#000a}
       help:['<b>Outer Ø</b> = size of the matching disc (the cover is sold by disc size, e.g. 240).','<b>Inner Ø</b> = inner diameter of the friction ring on the pressure plate.',
         '<b>PCD</b> = diameter of the circle through the centres of the mounting bolt holes. Measure across from one bolt hole centre to the opposite one.',
         'You can also type an <b>OEM / genuine number</b> (31210-…) or an old EXEDY number.'],
-      example:{x:'240',y:'',note:'Example: 240 mm cover. Type your own size.'}}
+      example:{x:'240',y:'',note:'Example: 240 mm cover. Type your own size.'}},
+    reg:{x:['','',''],y:['','',''],z:['','',''],q:'27700-0L020 / IVR-108 / Hilux',scanH:'Scan the old regulator',
+      tip:'Take one photo of the regulator from the front so the shape and the plug show, and one close-up of any sticker or stamped number. Pick the vehicle maker below first if you know it: the AI then compares your photo with fewer catalog pictures.',
+      pos:[['','12V & 24V'],['12','12V'],['24','24V']],
+      help:['Type any number you find on the old regulator or alternator: the genuine number (Toyota/Denso 27700-…, Nissan 23215-…), a Denso, Hitachi, Mitsubishi or Bosch number, or the New-Era IVR number. Dashes and spaces don\'t matter.',
+        'You can also type a vehicle model or engine code, e.g. <b>HILUX</b> or <b>2KD</b>.',
+        '<b>Alternator make</b> buttons filter by who made the original alternator: Denso, Hitachi, Mitsubishi and so on.',
+        'IVR = IC regulator (fits inside or on the alternator). AVR = older separate box regulator.'],
+      example:{x:'',y:'',note:''}}
   };
 
   function setMode(m,initial){
-    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
+    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover'],['mReg','reg']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
     var c=CFG[m];
     ['x','y','z'].forEach(function(k){$('l'+k).textContent=c[k][0];$('u'+k).textContent=c[k][1];$(k).placeholder=c[k][2]});
     $('q').placeholder=c.q;$('scanH').textContent=c.scanH;$('scanTip').textContent=c.tip;
     $('posSel').innerHTML=c.pos.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>'}).join('');
-    $('helpImg').hidden=isCl();if(!isCl())$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
+    document.querySelector('.mrow').classList.toggle('reg',m==='reg');st.brand='';
+    $('helpImg').hidden=isCl()||isReg();if(!isCl()&&!isReg())$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
     $('posSel').parentNode.hidden=c.pos.length<2;$('posSel').previousSibling&&0;
     $('helpList').innerHTML=c.help.map(function(h){return '<li>'+h+'</li>'}).join('');
-    $('drums').hidden=!(m==='shoe'||m==='disc');
+    $('drums').hidden=!(m==='shoe'||m==='disc'||m==='reg');$('lq').textContent=m==='reg'?'Part number, OEM number or vehicle':'Or part number';
     $('scanOut').innerHTML='';msg('');
     ls('mkf_mode',m);
     load(m,function(){
@@ -289,22 +309,27 @@ dialog::backdrop{background:#000a}
   }
   function load(m,cb){
     if(DATA[m])return cb();
-    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':'EX_CLUTCH';
+    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:m==='reg'?regItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':m==='reg'?'NE_REG':'EX_CLUTCH';
     if(window[glob]){DATA[m]=fn();return cb()}
     $('grid').innerHTML='<div class="load">Loading catalog…</div>';
-    var s=document.createElement('script');s.src=(m==='pad'?'pads':m==='shoe'?'shoes':'clutch')+'-data.js';
+    var s=document.createElement('script');s.src=(m==='pad'?'pads':m==='shoe'?'shoes':m==='reg'?'reg':'clutch')+'-data.js';
     s.onload=function(){DATA[m]=fn();cb()};s.onerror=function(){$('grid').innerHTML='<div class="empty">Could not load the catalog. Check your internet and reload.</div>'};
     document.head.appendChild(s);
   }
   function buildChips(){
     var P=items();
-    var cnt={};P.forEach(function(p){var k=mkKey(p);cnt[k]=(cnt[k]||0)+1});
-    var keys=isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
+    var cnt={};P.forEach(function(p){if(p.kind==='reg')p.mk.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else{var k=mkKey(p);cnt[k]=(cnt[k]||0)+1}});
+    var keys=isReg()?Object.keys(cnt).filter(function(k){return cnt[k]>=4}).sort(function(a,b){return cnt[b]-cnt[a]}):isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
     if(st.maker&&!cnt[st.maker])st.maker='';
     $('makers').innerHTML=[['',P.length]].concat(keys.map(function(k){return [k,cnt[k]]})).map(function(m){
-      var name=m[0]===''?'All':(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
+      var name=m[0]===''?'All':isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
       return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+name+'<small>'+m[1]+'</small></button>'}).join('');
-    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers'})[MODE]+' · '+P.filter(function(p){return p.s.length}).length+' in your list';
+    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators'})[MODE]+(isReg()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
+    if(MODE==='reg'){
+      var bc={};P.forEach(function(p){p.brs.forEach(function(b){bc[b]=(bc[b]||0)+1})});
+      $('drums').innerHTML='<span class="lbl" style="align-self:center">Alternator make</span>'+Object.keys(REGBR).filter(function(b){return bc[b]}).map(function(b){
+        return '<button class="chip" type="button" data-brand="'+b+'" aria-pressed="false">'+REGBR[b]+'<small>'+bc[b]+'</small></button>'}).join('');
+    }
     if(MODE==='disc'){
       var tc={};P.forEach(function(p){if(p.d&&p.d[2])tc[p.d[2]]=(tc[p.d[2]]||0)+1});
       $('drums').innerHTML='<span class="lbl" style="align-self:center">Teeth</span>'+Object.keys(tc).filter(function(t){return tc[t]>=15}).sort(function(a,b){return a-b}).map(function(t){
@@ -318,7 +343,8 @@ dialog::backdrop{background:#000a}
         return '<button class="chip" type="button" data-drum="'+d+'">'+(+d)+lab+'<small>'+cnt[d]+'</small></button>'}).join('');
     }
   }
-  $('drums').addEventListener('click',function(e){var b=e.target.closest('[data-drum],[data-teeth]');if(!b)return;
+  $('drums').addEventListener('click',function(e){var b=e.target.closest('[data-drum],[data-teeth],[data-brand]');if(!b)return;
+    if(b.dataset.brand){st.brand=st.brand===b.dataset.brand?'':b.dataset.brand;[].forEach.call(this.querySelectorAll('[data-brand]'),function(c){c.setAttribute('aria-pressed',c.dataset.brand===st.brand)});go();return}
     if(b.dataset.drum)$('x').value=b.dataset.drum;else $('y').value=b.dataset.teeth;$('exNote').textContent='';go()});
   $('makers').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;st.maker=b.dataset.m;
     [].forEach.call(this.children,function(c){c.setAttribute('aria-pressed',c===b)});go()});
@@ -326,6 +352,7 @@ dialog::backdrop{background:#000a}
   $('mShoe').onclick=function(){if(MODE!=='shoe')setMode('shoe')};
   $('mDisc').onclick=function(){if(MODE!=='disc')setMode('disc')};
   $('mCover').onclick=function(){if(MODE!=='cover')setMode('cover')};
+  $('mReg').onclick=function(){if(MODE!=='reg')setMode('reg')};
 
   // ---- matching ----
   // Returns the best-fitting variant: {t: total mm off, parts:[diffs], v: the matched values}
@@ -346,18 +373,19 @@ dialog::backdrop{background:#000a}
     }
     return best;
   }
-  function posOk(p,pos){if(!pos)return true;if(p.kind==='cover')return !!(p.d&&p.d[3]===pos);if(p.kind==='disc')return true;return p.kind==='pad'?(pos==='R'?p.pos!=='F':p.pos!=='R'):!!p.poss[pos]}
+  function posOk(p,pos){if(!pos)return true;if(p.kind==='reg')return p.v===pos;if(p.kind==='cover')return !!(p.d&&p.d[3]===pos);if(p.kind==='disc')return true;return p.kind==='pad'?(pos==='R'?p.pos!=='F':p.pos!=='R'):!!p.poss[pos]}
   function filtered(){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0;
     var q=norm($('q').value),tol=parseFloat($('tol').value)||2,pos=$('posSel').value;
     if(MODE==='shoe'&&/^K\d/.test(q))q='Z'+q.slice(1);
     var out=[];
     items().forEach(function(p){
-      if(st.maker&&mkKey(p)!==st.maker)return;
+      if(st.maker&&(p.kind==='reg'?p.mk.indexOf(st.maker)<0:mkKey(p)!==st.maker))return;
+      if(st.brand&&p.kind==='reg'&&p.brs.indexOf(st.brand)<0)return;
       if($('onlyStock').checked&&!p.s.length)return;
       if($('hideDisc').checked&&p.disc)return;
       if(!posOk(p,pos))return;
-      if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ');if(hay.indexOf(q)<0)return}
+      if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ')+(p.veh?' '+norm(p.veh.join(' ')):'');if(hay.indexOf(q)<0)return}
       var s=null;
       if(x||y||z){s=score(p,x,y,z);if(!s||!s.ok(tol))return}
       out.push({p:p,s:s});
@@ -375,6 +403,7 @@ dialog::backdrop{background:#000a}
       var d=r.s?r.s.v:p.d[0];
       return '<div class="dims">'+sp('X',d[0],df[0])+' · '+sp('Y',d[1],df[1])+' · '+sp('Z',d[2],df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
     }
+    if(p.kind==='reg')return '<div class="dims">'+p.v+'V · '+(p.ac?'AVR (separate box)':'IC regulator')+(p.brs.length?' · <span class="d">'+p.brs.map(function(b){return REGBR[b]}).join(', ')+'</span>':'')+'</div>';
     if(isCl()){
       if(!p.d)return '<div class="dims d">Size not listed in catalog</div>';var d=p.d;
       return p.kind==='disc'?'<div class="dims">'+sp('Ø',d[0],df[0])+' · '+(d[2]?'<span class="'+cls(df[1])+'">'+d[2]+' teeth</span>':'teeth ?')+(d[3]?' · '+sp('spl',d[3],df[2]):'')+'</div>'
@@ -391,6 +420,8 @@ dialog::backdrop{background:#000a}
     if(p.kind==='pad'){
       if(p.pos==='R')t+='<span class="tag rear">Rear</span>';if(p.pos==='FR')t+='<span class="tag rear">Front &amp; rear</span>';
       if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
+    }else if(isReg()){
+      if(p.nt)t+='<span class="tag">'+esc(p.nt.replace(/CONTINUED/g,'').trim()||'')+'</span>';
     }else if(isCl()){
       if(p.kind==='cover'&&p.d&&p.d[3])t+='<span class="tag">'+(COVTYPE[p.d[3]]||p.d[3])+'</span>';
       if(p.nw)t+='<span class="tag rear">New item</span>';
@@ -407,9 +438,9 @@ dialog::backdrop{background:#000a}
   function card(r,extra){
     var p=r.p;
     return '<button class="card'+(p.s.length?' instock':'')+'" type="button" data-n="'+p.n+'">'
-      +(isCl()?specHtml(p):'<div class="pic">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
+      +(isCl()?specHtml(p):'<div class="pic'+(isReg()?' photo':'')+'">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
       +'<div class="body">'+(extra||'')+'<div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
-      +dimsHtml(r)+tags(p)+(isCl()?refLine(p):'')+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
+      +dimsHtml(r)+tags(p)+(isCl()||isReg()?refLine(p):'')+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
   }
   function specHtml(p){
     var d=p.d;if(!d)return '<div class="pic spec"><div class="sub">No size in catalog</div></div>';
@@ -421,13 +452,14 @@ dialog::backdrop{background:#000a}
     if(p.refs.length){var hit=q?p.refs.filter(function(r,i){return p.rn[i].indexOf(q)>=0}):[];
       var show=hit.concat(p.refs.filter(function(r){return hit.indexOf(r)<0})).slice(0,3);
       h+='<div class="refs">OEM: '+show.map(function(r){return hit.indexOf(r)>=0?'<b>'+esc(r)+'</b>':esc(r)}).join(', ')+(p.refs.length>3?' +'+(p.refs.length-3)+' more':'')+'</div>'}
-    if(p.v.length)h+='<div class="veh">'+esc(p.v[0])+(p.v.length>1?' · +'+(p.v.length-1)+' more':'')+'</div>';
+    var vv=p.kind==='reg'?p.veh:p.v;
+    if(vv.length)h+='<div class="veh">'+esc(vv[0])+(vv.length>1?' · +'+(vv.length-1)+' more':'')+'</div>';
     return h;
   }
   function go(keep){
     if(!keep)st.limit=60;
     var f=filtered();
-    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers'})[MODE])):'Nothing matches';
+    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' regulators'})[MODE])):'Nothing matches';
     $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(function(r){return card(r)}).join('')
       :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check how you measured (see How to measure).</div>';
     $('more').hidden=f.list.length<=st.limit;
@@ -440,6 +472,7 @@ dialog::backdrop{background:#000a}
   function openCard(n){
     var p=items().find(function(x){return x.n===n});if(!p)return;
     if(isCl())return openClutch(p);
+    if(isReg())return openReg(p);
     var size=p.kind==='pad'?(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')
       :(p.pcs.length?p.pcs.map(function(c){return '<b>'+esc(c.ln)+'</b> '+esc(c.pos)+(c.disc?' (discontinued)':'')+'<br>'+(c.R?'Drum Ø '+(c.R*2)+' (R '+c.R+') · c '+c.c+' · a '+c.a+' · b '+c.b:'no size')+(c.core?' · core '+esc(c.core):'')}).join('<br>'):'Export only');
     var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
@@ -450,6 +483,21 @@ dialog::backdrop{background:#000a}
       +(p.r&&p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'+tags(p)
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+encodeURIComponent(p.n)+'">Search '+p.n+' on Google</a></div>';
+    $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
+  }
+  function openReg(p){
+    var q=norm($('q').value);
+    var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
+      +'<div class="pic" style="background:#fff"><img alt="Photo of '+p.n+'" src="'+p.i+'"></div>'
+      +'<dl class="kv"><dt>Type</dt><dd>New-Era '+(p.ac?'AVR regulator (separate box)':'IC regulator')+' · '+p.v+'V</dd>'
+      +(p.nt?'<dt>Note</dt><dd>'+esc(p.nt)+'</dd>':'')
+      +'<dt>Catalog page</dt><dd>'+p.p+'</dd></dl>'
+      +'<div><div class="lbl">Cross numbers ('+p.refs.length+')</div><div class="reflist">'+p.refs.map(function(r,i){
+        var parts=r.split(' '),b=parts[1]?' <span style="color:var(--mut);font-family:var(--f-body)">'+(REGBR[parts[1]]||parts[1])+'</span>':'';
+        return '<span'+(q&&p.rn[i].indexOf(q)>=0?' class="hit"':'')+'>'+esc(parts[0])+b+'</span>'}).join('')+'</div></div>'
+      +(p.app.length?'<div><div class="lbl">Vehicles</div><div style="font-size:.86rem;max-height:34dvh;overflow:auto;display:grid;gap:6px;margin-top:4px">'+p.app.map(function(a){
+        return '<div><b>'+esc(a[0]||'')+'</b><br>'+a[1].map(esc).join('<br>')+'</div>'}).join('')+'</div></div>':'')
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent(p.refs[0]?p.refs[0].split(' ')[0]+' regulator':p.n)+'">Search on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
   function openClutch(p){
@@ -544,6 +592,10 @@ dialog::backdrop{background:#000a}
     disc:'These photos show a CLUTCH DISC (clutch plate) or its box/label, brought to an auto parts shop. Respond with ONLY JSON:\n'
       +'{"isPart":true,"numbers":["every part number printed, stamped or on a sticker/box, exactly as written, e.g. ISD104US, TYD149U, 31250-36190, 8-97032-680-0, DT-064"],"brand":"","teeth":0,"features":["short facts: dampers springs count, facing type organic/ceramic buttons"]}\n'
       +'teeth = number of spline teeth in the centre hub if you can clearly count them, else 0. isPart=false if it is not a clutch disc. Read digits carefully. Never invent numbers.',
+    reg:'These photos show an alternator VOLTAGE REGULATOR (IC regulator / brush holder, or separate regulator box) brought to an auto parts shop. Respond with ONLY JSON:\n'
+      +'{"isPart":true,"numbers":["every number printed or stamped on it or on a sticker, exactly as written, e.g. 126000-1234, 27700-0L020, L190-4315, IVR-108, F00M145236"],"brand":"maker text visible e.g. DENSO, HITACHI, MITSUBISHI, BOSCH or \"\"","maker":"ND|HI|MI|BO|NK|SF|unknown (who made it, from text or typical shape)","volt":"12|24|unknown",'
+      +'"terminals":0,"features":["short facts: plug shape, number of pins, pin letters (IG, L, S, B, P, F, E, C), screw holes, heat-sink fins, brushes attached"]}\n'
+      +'isPart=false if it is not a voltage regulator. Read digits carefully. Never invent numbers.',
     cover:'These photos show a CLUTCH COVER (pressure plate) or its box/label, brought to an auto parts shop. Respond with ONLY JSON:\n'
       +'{"isPart":true,"numbers":["every part number printed, stamped or on a sticker/box, exactly as written, e.g. ISC506, TYC617, 31210-36240"],"brand":"","features":["short facts: diaphragm fingers or levers, number of bolt holes"]}\n'
       +'isPart=false if it is not a clutch cover. Read digits carefully. Never invent numbers.'
@@ -551,6 +603,16 @@ dialog::backdrop{background:#000a}
   function pickPool(read){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0,P=items();
     var direct=[];
+    if(isReg()){
+      (read.numbers||[]).forEach(function(n){var k=norm(n);if(k.length<5)return;
+        P.forEach(function(p){if(direct.indexOf(p)>=0)return;if(norm(p.n)===k||p.rn.some(function(r){return r===k||(k.length>=7&&(r.indexOf(k)>=0||k.indexOf(r)>=0)&&r.length>=7)}))direct.push(p)})});
+      var vol=$('posSel').value||(/^(12|24)$/.test(read.volt)?read.volt:''),br=st.brand||(REGBR[read.maker]?read.maker:'');
+      var base=P.filter(function(p){return direct.indexOf(p)<0&&(!vol||p.v===vol)&&(!st.maker||p.mk.indexOf(st.maker)>=0)});
+      if(st.brand)base=base.filter(function(p){return p.brs.indexOf(st.brand)>=0});
+      else if(br)base.sort(function(a,b){return (b.brs.indexOf(br)>=0)-(a.brs.indexOf(br)>=0)});
+      var lim=st.maker?80:48;
+      return {pool:direct.concat(base).slice(0,lim),direct:direct,sized:!!st.maker,total:base.length,lim:lim,br:br,vol:vol};
+    }
     if(isCl()){
       (read.numbers||[]).forEach(function(n){var k=norm(n);if(k.length<5)return;
         P.forEach(function(p){if(direct.indexOf(p)>=0)return;if(norm(p.n)===k||(k.length>=8&&p.rn.indexOf(k)>=0)||p.of.some(function(o){return norm(o[0])===k}))direct.push(p)})});
@@ -579,6 +641,9 @@ dialog::backdrop{background:#000a}
       var read=await gemini(shots.map(img64).concat([{text:READ[MODE]}]));
       if(read.isPart===false){msg('That photo does not look like a '+({pad:'disc brake pad',shoe:'brake shoe',disc:'clutch disc',cover:'clutch cover'})[MODE]+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
       var pk=pickPool(read);
+      if(isReg()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the New-Era catalog. Compare the photo and plug before selling.');return}
+      if(isReg()&&!pk.direct.length&&pk.total>pk.lim){showResult(read,pk,[],'');
+        msg('No number found. '+pk.total+' regulators still fit'+(pk.br?' ('+REGBR[pk.br]+')':'')+'. Tap the vehicle maker (Toyota, Nissan…) above, then tap Find it again.',1);return}
       if(isCl()){
         showResult(read,pk,[],'');
         if(pk.direct.length)msg('Done. Number matched in the EXEDY catalog. Check the size against the part before selling.');
@@ -590,11 +655,12 @@ dialog::backdrop{background:#000a}
       if(!pk.pool.length){showResult(read,pk,[],'');msg('No catalog items fit those sizes. Widen the range or clear a size, then scan again.',1);return}
       msg('<span class="spin"></span> Step 2 of 2: comparing with '+pk.pool.length+' catalog drawings…');
       var parts=shots.map(img64);
-      parts.push({text:'Above: photo(s) of the customer\'s worn '+(MODE==='pad'?'brake pad':'brake shoe')+'. Below: candidate MK Kashiyama catalog line drawings, each labelled with its number.'});
+      parts.push({text:'Above: photo(s) of the customer\'s worn '+({pad:'brake pad',shoe:'brake shoe',reg:'voltage regulator'})[MODE]+'. Below: candidate MK Kashiyama catalog line drawings, each labelled with its number.'});
       pk.pool.forEach(function(p){
-        var lab=MODE==='pad'?'X '+p.d[0][0]+' mm, Y '+p.d[0][1]+' mm':p.pcs.map(function(c){return c.ln+' '+c.pos+(c.R?' drum '+(c.R*2)+' mm, lining '+c.c+' mm':'')}).join('; ');
+        var lab=MODE==='reg'?p.v+'V'+(p.brs.length?', '+p.brs.map(function(b){return REGBR[b]}).join('/'):''):MODE==='pad'?'X '+p.d[0][0]+' mm, Y '+p.d[0][1]+' mm':p.pcs.map(function(c){return c.ln+' '+c.pos+(c.R?' drum '+(c.R*2)+' mm, lining '+c.c+' mm':'')}).join('; ');
         parts.push({text:'Candidate '+p.n+' ('+lab+'):'});parts.push(img64(p.i))});
-      parts.push({text:(MODE==='pad'
+      parts.push({text:(MODE==='reg'?'Each candidate is a catalog photo plus a drawing of the plug. Which candidate is the SAME regulator as the photographed one? Compare body shape, plug/connector shape and pin count, mounting holes, heat-sink fins and brush holder. Ignore dirt and colour differences. '
+          :MODE==='pad'
           ?'Which candidate has the SAME backing-plate outline as the photographed pad? Compare overall proportions, ear/tab shapes at the ends, notches, curve of top and bottom edges, centre slot, wear-indicator position. Ignore lining wear and dirt. '
           :'Which candidate has the SAME shoe web outline as the photographed shoe? Compare the web shape, number and position of holes, spring-hook holes, end notches (anchor and adjuster ends), parking-lever pin. A set drawing may show two shoes; match either one. Mirror images (left/right) count as the same set. Ignore lining wear and rust. ')
         +(read.numbers&&read.numbers.length?'Numbers read from the part: '+read.numbers.join(', ')+'. ':'')
@@ -602,7 +668,7 @@ dialog::backdrop{background:#000a}
       var cmp=await gemini(parts),P=items();
       var rk=(cmp.ranking||[]).filter(function(r){return P.some(function(p){return p.n===String(r.no).toUpperCase().trim()})}).slice(0,5);
       showResult(read,pk,rk,cmp.note||'');
-      msg('Done. Check the drawing against the part before selling. Tap a card for details.');
+      msg('Done. Check the picture against the part before selling. Tap a card for details.');
     }catch(e){msg((e&&e.message)||'Scan failed.',1)}
     finally{busy=false;b.disabled=false}
   }
@@ -622,7 +688,7 @@ dialog::backdrop{background:#000a}
   }
   $('bScan').onclick=scan;
 
-  var sm=ls('mkf_mode');setMode(['pad','shoe','disc','cover'].indexOf(sm)>=0?sm:'pad',true);
+  var sm=ls('mkf_mode');setMode(['pad','shoe','disc','cover','reg'].indexOf(sm)>=0?sm:'pad',true);
 })();
 </script>
 </body>
