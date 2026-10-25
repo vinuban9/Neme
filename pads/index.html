@@ -116,14 +116,14 @@ dialog::backdrop{background:#000a}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
-.modes{display:inline-grid;grid-template-columns:repeat(10,auto);background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:3px;gap:3px}
+.modes{display:inline-grid;grid-template-columns:repeat(6,auto);background:var(--sur2);border:1px solid var(--brd);border-radius:10px;padding:3px;gap:3px}
 .modes button{border:0;background:transparent;color:var(--mut);border-radius:8px;padding:9px 18px;font:700 1rem var(--f-disp);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .modes button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink)}
 .pcs{display:grid;gap:3px;font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
 .pcs .ln{font-weight:500}
 .pcs .x{color:var(--mut)}
 .fld datalist{display:none}
-@media (max-width:1100px){.modes{grid-template-columns:repeat(5,auto)}}
+@media (max-width:1100px){.modes{grid-template-columns:repeat(6,auto)}}
 @media (max-width:560px){.modes{grid-template-columns:1fr 1fr;width:100%}.modes button{padding:9px 6px}}
 .card .pic.spec{background:var(--sur2);aspect-ratio:auto;padding:14px 12px;display:grid;gap:4px;justify-items:start;align-content:center;color:var(--ink)}
 .spec .big{font-family:var(--f-disp);font-weight:700;font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
@@ -151,7 +151,7 @@ dialog::backdrop{background:#000a}
   <header class="top">
     <div>
       <h1>NEME Parts <b>Finder</b></h1>
-      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB and NKK catalogs. Green cards are in your NEME POS list.</p>
+      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK and NSK catalogs. Green cards are in your NEME POS list.</p>
     </div>
     <div class="modes" role="group" aria-label="Part type">
       <button type="button" id="mPad" aria-pressed="true">Disc pads</button>
@@ -164,6 +164,7 @@ dialog::backdrop{background:#000a}
       <button type="button" id="mUj" aria-pressed="false">U-joints</button>
       <button type="button" id="mSd" aria-pressed="false">Starter drives</button>
       <button type="button" id="mWp" aria-pressed="false">Water pumps</button>
+      <button type="button" id="mBrg" aria-pressed="false">Bearings</button>
     </div>
   </header>
   <span class="lbl" id="count">Loading catalog…</span>
@@ -218,7 +219,7 @@ dialog::backdrop{background:#000a}
 
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 
-<script src="pads-data.js?v=20261024b"></script>
+<script src="pads-data.js?v=20261025a"></script>
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
@@ -227,7 +228,7 @@ dialog::backdrop{background:#000a}
   function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var BUILD='20261024b';
+  var BUILD='20261025a';
   function showErr(e){var g=$('grid');if(g)g.innerHTML='<div class="empty" style="grid-column:1/-1">Something went wrong: <b>'+esc((e&&e.message)||e)+'</b><br>Send this message to Claude.</div>'}
   window.addEventListener('error',function(ev){var g=$('grid');if(g&&/Loading/.test(g.textContent))showErr(ev.message)});
   var LEG_PAD='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',LEG_SHOE='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';
@@ -243,6 +244,18 @@ dialog::backdrop{background:#000a}
   function isUJ(){return MODE==='uj'}
   function isSD(){return MODE==='sd'}
   function isWP(){return MODE==='wp'}
+  function isBR(){return MODE==='brg'}
+  var BRSUF=/(2RS1|2RSR|2RS|RS1|RSR|RS|LLU|LLB|LLH|2NSE|NSE|DDU|DU|VV|ZZ1|ZZS|ZZ|2Z|Z|NR|C3|C4|CM|NXR|AV2S|A5)+$/;
+  function brgItems(){var B=window.NSK_BRG||{b:[],h:[],G:[],T:[]},out=[];
+    B.b.forEach(function(r){var vs=r[6]?r[6].split(' '):[],al=r[7]?r[7].split(' '):[],n=r[0];
+      var refs=al.concat(vs.filter(function(v){return v!=='N'&&v!=='NR'}).map(function(v){return n+v}));
+      var tk=[n].concat(refs,n.split('/'));if(/^HR\d/.test(n))tk.push(n.slice(2).replace(/(XJ|J|C)$/,''));
+      out.push({kind:'brg',n:n,d:r[1],D:r[2],B:r[3],g:B.G[r[4]],t:B.T[r[5]],vs:vs,refs:refs,rn:refs.map(norm),tk:tk.map(norm),v:[],p:r[8],s:[],r:[],of:[],disc:false,i:null})});
+    B.h.forEach(function(o){var ns=o.n.split(' / '),core=ns.map(function(x){var m=x.match(/(\d{2}(?:BWKHS?|BWK|KWH)\d{2}[A-Z]?\d?)/);return m?m[1]:''}).filter(Boolean);
+      var words=(o.mk+' '+o.v).split(/[\s,:;()\/·]+/).filter(function(w){return w.length>1});
+      out.push({kind:'brg',hub:1,n:ns[0],alt:ns.slice(1),d:o.d,D:o.D,B:o.B,g:'Hub unit (wheel)',t:o.t+' wheel hub unit · type '+o.g.split('-')[1],mk:o.mk,pos:o.pos,
+        refs:o.o,rn:o.o.map(norm),tk:ns.map(norm).concat(core,o.o.map(norm),words.map(norm)),v:[o.mk+': '+o.v],vs:[],p:o.t==='BWKH'?'Hub 10':'Hub 8',s:[],r:[],of:[],disc:false,i:'brgimg/'+o.g+'.jpg?v='+BUILD})});
+    return out}
   function wpItems(){return (window.GMB_WP||[]).map(function(o){var refs=o.r||[],comp=o.c||[];
     var rr=refs.concat(comp.map(function(c){return c[0]}));
     return {kind:'wp',n:o.n,g:o.m||'',refs:refs,comp:comp,rn:rr.map(norm),v:(o.g||[]).concat(o.a||[]),w:o.w||null,p:o.p,disc:!!o.d,
@@ -274,7 +287,7 @@ dialog::backdrop{background:#000a}
   function clutchItems(kind){return (window.EX_CLUTCH||[]).filter(function(c){return c.k===kind}).map(function(c){
     var refs=c.r||[];return {kind:kind,n:c.n,s:c.s||[],d:c.d||null,refs:refs,rn:refs.map(norm),v:c.v||[],o:c.o||null,of:c.of||[],nw:!!c.nw,
       disc:!!c.o,r:[],i:null}})}
-  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null,reg:null,sol:null,uj:null,sd:null,rec:null,wp:null},st={maker:'',limit:60,brand:'',fig:''};
+  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null,reg:null,sol:null,uj:null,sd:null,rec:null,wp:null,brg:null},st={maker:'',limit:60,brand:'',fig:''};
   function items(){return DATA[MODE]||[]}
 
   var CFG={
@@ -326,6 +339,15 @@ dialog::backdrop{background:#000a}
         '<b>Type</b> buttons: A = external circlip, B = internal circlip, C–F = bolt plates, G/H = wing bearings, J = staked.',
         'You can also type an OEM number (Toyota 37201-…, Isuzu 1-37300-…), a Spicer or Borg-Warner number, or a vehicle like <b>ELF</b>.'],
       example:{x:'23.82',y:'61.3',note:'Example: 23.82 mm cup, 61.3 mm long. Type your own sizes.'}},
+    brg:{x:['Inner Ø (bore)','mm, shaft hole d','17'],y:['Outer Ø','mm, outer ring D','40'],z:['Width B','mm (tapered: total T)','12'],q:'6203ZZ / 30205 / LM11949 / Corolla',scanH:'Scan the old bearing',
+      tip:'Wipe the bearing and photograph the flat side of the ring (or the seal) so the stamped number is sharp; a second close-up helps. Bearing types look alike, so if no number is readable, measure bore × outside × width with a vernier and type them below.',
+      pos:[['','All'],['F','Front wheel'],['R','Rear wheel']],
+      help:['<b>Bore d</b> = inside diameter (the shaft hole). <b>Outside D</b> = outer ring diameter. <b>Width B</b> = ring width. For a tapered bearing measure the total width T of cone + cup together.',
+        'Use a vernier: bearing sizes are exact (17 × 40 × 12 = 6203). Pick <b>±1 mm</b> for exact vernier readings, <b>±3 / ±5</b> if you measured with a ruler.',
+        'Type the number with or without the suffix: <b>6203ZZ</b>, <b>6203-2RS</b>, <b>6203DDU</b> all find 6203. ZZ = metal shields, DDU / VV / 2RS = rubber seals, C3 = extra clearance, N / NR = snap-ring groove.',
+        'Tapered inch bearings come as cone/cup pairs (e.g. <b>LM11949/LM11910</b>); type either half.',
+        '<b>Hub unit (wheel)</b> chip = NSK wheel hub bearings (HUB II / HUB III). Type a vehicle like <b>COROLLA</b>, <b>ELGRAND</b> or an OEM number like <b>42409-12020</b>.'],
+      example:{x:'',y:'',note:''}},
     wp:{x:['','',''],y:['','',''],z:['','',''],q:'GWT-79A / 16100-59155 / Hiace 3L',scanH:'Scan the old water pump',
       tip:'Photograph the pump from the front (pulley/flange side) so the body shape, bolt holes and outlet pipe show; add a close-up of any cast or stamped number. Pick the vehicle maker below first: the AI then compares your photo with that maker\'s pump photos.',
       pos:[['','All']],
@@ -361,17 +383,17 @@ dialog::backdrop{background:#000a}
   };
 
   function setMode(m,initial){
-    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover'],['mReg','reg'],['mSol','sol'],['mRec','rec'],['mUj','uj'],['mSd','sd'],['mWp','wp']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
+    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover'],['mReg','reg'],['mSol','sol'],['mRec','rec'],['mUj','uj'],['mSd','sd'],['mWp','wp'],['mBrg','brg']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
     var c=CFG[m];
     ['x','y','z'].forEach(function(k){$('l'+k).textContent=c[k][0];$('u'+k).textContent=c[k][1];$(k).placeholder=c[k][2]});
     $('q').placeholder=c.q;$('scanH').textContent=c.scanH;$('scanTip').textContent=c.tip;
     $('posSel').innerHTML=c.pos.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>'}).join('');
     document.querySelector('.mrow').classList.toggle('reg',m==='sol'||m==='wp');document.querySelector('.mrow').classList.toggle('rg',m==='reg');document.querySelector('.mrow').classList.toggle('rec',m==='rec');document.querySelector('.mrow').classList.toggle('sd',m==='sd');st.brand='';
-    $('tolL').hidden=m==='sol'||m==='sd'||m==='wp';$('discL').hidden=isR(m)||m==='sd';$('posL').textContent=isR(m)?'Voltage':m==='cover'?'Type':'Position';
-    $('helpImg').hidden=isCl()||isReg()||m==='uj'||m==='sd'||m==='wp';if(!isCl()&&!isReg()&&m!=='uj'&&m!=='sd'&&m!=='wp')$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
+    $('tolL').hidden=m==='sol'||m==='sd'||m==='wp';$('discL').hidden=isR(m)||m==='sd'||m==='brg';$('posL').textContent=isR(m)?'Voltage':m==='cover'?'Type':'Position';
+    $('helpImg').hidden=isCl()||isReg()||m==='uj'||m==='sd'||m==='wp'||m==='brg';if(!isCl()&&!isReg()&&m!=='uj'&&m!=='sd'&&m!=='wp'&&m!=='brg')$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
     $('posSel').parentNode.hidden=c.pos.length<2;$('posSel').previousSibling&&0;
     $('helpList').innerHTML=c.help.map(function(h){return '<li>'+h+'</li>'}).join('');
-    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd');st.fig='';$('lq').textContent=isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
+    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd');st.fig='';$('lq').textContent=m==='brg'?'Bearing number, OEM or vehicle':isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
     $('scanOut').innerHTML='';msg('');
     ls('mkf_mode',m);
     load(m,function(){
@@ -383,10 +405,10 @@ dialog::backdrop{background:#000a}
   }
   function load(m,cb){
     if(DATA[m])return cb();
-    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:m==='reg'?function(){return regItems('NE_REG')}:m==='sol'?function(){return regItems('NE_SOL',1)}:m==='rec'?function(){return regItems('NE_REC',2)}:m==='uj'?ujItems:m==='sd'?sdItems:m==='wp'?wpItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':m==='reg'?'NE_REG':m==='sol'?'NE_SOL':m==='rec'?'NE_REC':m==='uj'?'GMB_UJ':m==='sd'?'NKK_SD':m==='wp'?'GMB_WP':'EX_CLUTCH';
+    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:m==='reg'?function(){return regItems('NE_REG')}:m==='sol'?function(){return regItems('NE_SOL',1)}:m==='rec'?function(){return regItems('NE_REC',2)}:m==='uj'?ujItems:m==='sd'?sdItems:m==='wp'?wpItems:m==='brg'?brgItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':m==='reg'?'NE_REG':m==='sol'?'NE_SOL':m==='rec'?'NE_REC':m==='uj'?'GMB_UJ':m==='sd'?'NKK_SD':m==='wp'?'GMB_WP':m==='brg'?'NSK_BRG':'EX_CLUTCH';
     if(window[glob]){DATA[m]=fn();return cb()}
     $('grid').innerHTML='<div class="load">Loading catalog…</div>';
-    var file=(m==='pad'?'pads':m==='shoe'?'shoes':m==='reg'?'reg':m==='sol'?'sol':m==='rec'?'rec':m==='uj'?'uj':m==='sd'?'sd':m==='wp'?'wp':'clutch')+'-data.js';
+    var file=(m==='pad'?'pads':m==='shoe'?'shoes':m==='reg'?'reg':m==='sol'?'sol':m==='rec'?'rec':m==='uj'?'uj':m==='sd'?'sd':m==='wp'?'wp':m==='brg'?'bear':'clutch')+'-data.js';
     (function attempt(n){
       var s=document.createElement('script');s.src=file+'?v='+BUILD+(n?'.'+Date.now():'');
       s.onload=function(){if(!window[glob]){s.onerror();return}try{DATA[m]=fn();cb()}catch(e){showErr(e)}};
@@ -398,13 +420,13 @@ dialog::backdrop{background:#000a}
   }
   function buildChips(){
     var P=items();
-    var cnt={};P.forEach(function(p){if(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'){cnt[p.g]=(cnt[p.g]||0)+1}else if(p.kind==='reg')p.mk.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else{var k=mkKey(p);cnt[k]=(cnt[k]||0)+1}});
-    var keys=isWP()?Object.keys(cnt).filter(function(k){return k&&cnt[k]>=5}).sort(function(a,b){return cnt[b]-cnt[a]}):isSD()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isUJ()?Object.keys(cnt).filter(function(k){return cnt[k]>=3&&k!=='DISCONTINUED'}).sort(function(a,b){return cnt[b]-cnt[a]}):isReg()?Object.keys(cnt).filter(function(k){return cnt[k]>=4}).sort(function(a,b){return cnt[b]-cnt[a]}):isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
+    var cnt={};P.forEach(function(p){if(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'){cnt[p.g]=(cnt[p.g]||0)+1}else if(p.kind==='reg')p.mk.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else{var k=mkKey(p);cnt[k]=(cnt[k]||0)+1}});
+    var keys=isBR()?Object.keys(cnt).sort(function(a,b){return a.indexOf('Hub')===0?-1:b.indexOf('Hub')===0?1:cnt[b]-cnt[a]}):isWP()?Object.keys(cnt).filter(function(k){return k&&cnt[k]>=5}).sort(function(a,b){return cnt[b]-cnt[a]}):isSD()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isUJ()?Object.keys(cnt).filter(function(k){return cnt[k]>=3&&k!=='DISCONTINUED'}).sort(function(a,b){return cnt[b]-cnt[a]}):isReg()?Object.keys(cnt).filter(function(k){return cnt[k]>=4}).sort(function(a,b){return cnt[b]-cnt[a]}):isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
     if(st.maker&&!cnt[st.maker])st.maker='';
     $('makers').innerHTML=[['',P.length]].concat(keys.map(function(k){return [k,cnt[k]]})).map(function(m){
-      var name=m[0]===''?'All':isSD()||isWP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isUJ()?m[0].replace('UNIVERSAL JOINT','').replace(' VEHICLE & TRUCK','').trim().toLowerCase().replace(/(^|\s|\()\w/g,function(c){return c.toUpperCase()}):isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
+      var name=m[0]===''?'All':isBR()?m[0]:isSD()||isWP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isUJ()?m[0].replace('UNIVERSAL JOINT','').replace(' VEHICLE & TRUCK','').trim().toLowerCase().replace(/(^|\s|\()\w/g,function(c){return c.toUpperCase()}):isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
       return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+name+'<small>'+m[1]+'</small></button>'}).join('');
-    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps'})[MODE]+(isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
+    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps',brg:' bearings'})[MODE]+(isBR()?' · NSK catalog · '+P.filter(function(p){return p.hub}).length+' wheel hub units':isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
     if(isSD()){
       var sc={};P.forEach(function(p){if(p.t)sc[p.t]=(sc[p.t]||0)+1});
       $('drums').innerHTML='<span class="lbl" style="align-self:center">Teeth</span>'+Object.keys(sc).sort(function(a,b){return a-b}).map(function(t){
@@ -449,9 +471,11 @@ dialog::backdrop{background:#000a}
   $('mUj').onclick=function(){if(MODE!=='uj')setMode('uj')};
   $('mSd').onclick=function(){if(MODE!=='sd')setMode('sd')};
   $('mWp').onclick=function(){if(MODE!=='wp')setMode('wp')};
+  $('mBrg').onclick=function(){if(MODE!=='brg')setMode('brg')};
 
   // ---- matching ----
   // Returns the best-fitting variant: {t: total mm off, parts:[diffs], v: the matched values}
+  function t0(){return 0}
   function score(p,x,y,z){
     var best=null;
     if(p.kind==='reg'&&!p.rec&&!p.sol){
@@ -466,6 +490,9 @@ dialog::backdrop{background:#000a}
     if(p.kind==='pad'){
       p.d.forEach(function(d){var dx=x?Math.abs(d[0]-x):0,dy=y?Math.abs(d[1]-y):0,dz=z?Math.abs(d[2]-z):0;
         var s={t:dx+dy+dz*0.5,df:[x?dx:null,y?dy:null,z?dz:null],v:d,ok:function(t){return dx<=t&&dy<=t&&dz<=t+1}};if(!best||s.t<best.t)best=s});
+    }else if(p.kind==='brg'){
+      var tb=t0(),dd=x?(p.d?Math.abs(p.d-x):99):0,dD=y?Math.abs(p.D-y):0,dB=z?Math.abs(p.B-z):0;
+      return {t:dd+dD+dB,df:[x?dd:null,y?dD:null,z?dB:null],v:p,ok:function(t){var k=t*t/10+0.1;return dd<=k&&dD<=k&&dB<=k*1.5}};
     }else if(p.kind==='wp'){
       return {t:0,df:[null,null,null],v:p,ok:function(){return true}};
     }else if(p.kind==='sd'){
@@ -488,7 +515,7 @@ dialog::backdrop{background:#000a}
     }
     return best;
   }
-  function posOk(p,pos){if(!pos)return true;if(p.kind==='reg')return p.rec&&p.rt.length?p.rt.some(function(r){return r[0]===pos}):p.v===pos;if(p.kind==='cover')return !!(p.d&&p.d[3]===pos);if(p.kind==='disc')return true;return p.kind==='pad'?(pos==='R'?p.pos!=='F':p.pos!=='R'):!!p.poss[pos]}
+  function posOk(p,pos){if(!pos)return true;if(p.kind==='brg')return !!p.hub&&p.pos.indexOf(pos)>=0;if(p.kind==='reg')return p.rec&&p.rt.length?p.rt.some(function(r){return r[0]===pos}):p.v===pos;if(p.kind==='cover')return !!(p.d&&p.d[3]===pos);if(p.kind==='disc')return true;return p.kind==='pad'?(pos==='R'?p.pos!=='F':p.pos!=='R'):!!p.poss[pos]}
   function filtered(){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0;
     if(MODE==='sol'||MODE==='wp')x=y=z=0;if(MODE==='rec')z=0;if(MODE==='reg')y=z=0;
@@ -496,18 +523,22 @@ dialog::backdrop{background:#000a}
     if(MODE==='shoe'&&/^K\d/.test(q))q='Z'+q.slice(1);
     var out=[];
     items().forEach(function(p){
-      if(st.maker&&(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'?p.g!==st.maker:p.kind==='reg'?p.mk.indexOf(st.maker)<0:mkKey(p)!==st.maker))return;
+      if(st.maker&&(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'?p.g!==st.maker:p.kind==='reg'?p.mk.indexOf(st.maker)<0:mkKey(p)!==st.maker))return;
       if(st.fig&&p.kind==='uj'&&p.t!==st.fig)return;
       if(st.brand&&p.kind==='reg'&&p.brs.indexOf(st.brand)<0)return;
       if($('onlyStock').checked&&!p.s.length)return;
       if($('hideDisc').checked&&p.disc)return;
       if(!posOk(p,pos))return;
-      if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ')+(p.veh?' '+norm(p.veh.join(' ')+' '+(p.nt||'')):'')+(p.kind==='uj'?' '+norm(p.v.join(' '))+' '+p.same.map(norm).join(' '):'')+(p.kind==='sd'?' '+norm(p.v.join(' ')+' '+p.desc):'')+(p.kind==='wp'?' '+norm(p.v.join(' ')):'');if(hay.indexOf(q)<0)return}
+      if(q&&p.kind==='brg'){var q2=q.replace(BRSUF,'')||q;if(!p.tk.some(function(t){return t.indexOf(q)===0||t.indexOf(q2)===0}))return}
+      else if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ')+(p.veh?' '+norm(p.veh.join(' ')+' '+(p.nt||'')):'')+(p.kind==='uj'?' '+norm(p.v.join(' '))+' '+p.same.map(norm).join(' '):'')+(p.kind==='sd'?' '+norm(p.v.join(' ')+' '+p.desc):'')+(p.kind==='wp'?' '+norm(p.v.join(' ')):'');if(hay.indexOf(q)<0)return}
       var s=null;
       if(x||y||z){s=score(p,x,y,z);if(!s||!s.ok(tol))return}
       out.push({p:p,s:s});
     });
+    if(MODE==='brg'&&q.length>=3){var qe=q.replace(BRSUF,'')||q,ex=out.filter(function(r){return r.p.tk.some(function(t){return t===q||t===qe})});if(ex.length)out=ex}
     if(x||y||z)out.sort(function(a,b){return a.s.t-b.s.t||(b.p.s.length-a.p.s.length)});
+    else if(MODE==='brg'&&q){var qq=q.replace(BRSUF,'')||q;out.sort(function(a,b){var f=function(p){return norm(p.n)===q||norm(p.n)===qq?0:norm(p.n).indexOf(qq)===0?1:2};return f(a.p)-f(b.p)||a.p.n.length-b.p.n.length||a.p.n.localeCompare(b.p.n)})}
+    else if(MODE==='brg')out.sort(function(a,b){return (b.p.hub||0)-(a.p.hub||0)||a.p.d-b.p.d||a.p.D-b.p.D})
     else out.sort(function(a,b){return (b.p.s.length-a.p.s.length)||a.p.n.localeCompare(b.p.n)});
     return {list:out,any:!!(x||y||z)};
   }
@@ -520,6 +551,8 @@ dialog::backdrop{background:#000a}
       var d=r.s?r.s.v:p.d[0];
       return '<div class="dims">'+sp('X',d[0],df[0])+' · '+sp('Y',d[1],df[1])+' · '+sp('Z',d[2],df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
     }
+    if(p.kind==='brg'){var f3=function(lab,val,diff){return '<span class="'+cls(diff)+'">'+lab+' '+val+'</span>'};
+      return '<div class="dims">'+(p.d?f3('d',p.d,df[0]):'d -')+' × '+f3('D',p.D,df[1])+' × '+f3('B',p.B,df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(2).replace(/\.?0+$/,'')+')</span>':'')+'</div><div class="veh">'+esc(p.hub?p.t:p.t.toLowerCase().replace(/^\w/,function(c){return c.toUpperCase()}))+'</div>'}
     if(p.kind==='wp')return '<div class="dims">water pump · '+esc(p.g.charAt(0)+p.g.slice(1).toLowerCase())+(p.w?' · <span class="d">'+p.w[0]+' g</span>':'')+'</div>';
     if(p.kind==='sd')return '<div class="dims">'+(p.t?'<span class="'+(r.s&&$('x').value?cls(r.s.df[0]):'')+'">'+p.t+' teeth</span>':'teeth not listed')+' · '+esc(p.desc.replace(/\s*\(\d+T\)/,'').toLowerCase())+'</div>';
     if(p.kind==='uj'){var df=r.s?r.s.df:[null,null,null];
@@ -547,6 +580,11 @@ dialog::backdrop{background:#000a}
     if(p.kind==='pad'){
       if(p.pos==='R')t+='<span class="tag rear">Rear</span>';if(p.pos==='FR')t+='<span class="tag rear">Front &amp; rear</span>';
       if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
+    }else if(isBR()){
+      if(p.hub)t+='<span class="tag rear">'+(p.pos==='F'?'Front wheel':p.pos==='R'?'Rear wheel':'Front / rear')+'</span>';
+      if(/INCH/i.test(p.t))t+='<span class="tag">Inch size</span>';
+      if(p.vs.indexOf('ZZ')>=0)t+='<span class="tag">ZZ shield</span>';if(p.vs.indexOf('DDU')>=0||p.vs.indexOf('VV')>=0)t+='<span class="tag">'+(p.vs.indexOf('DDU')>=0?'DDU':'VV')+' seal</span>';
+      if(p.refs.length&&!p.hub&&/^N|^NU|^NJ/.test(p.n))t+='<span class="tag">also '+esc(p.refs.slice(0,2).join(', '))+'</span>';
     }else if(isWP()){
       if(p.disc)t+='<span class="tag disc">Discontinued</span>';
       if(!p.i)t+='<span class="tag">No photo in catalog</span>';
@@ -575,9 +613,13 @@ dialog::backdrop{background:#000a}
   function card(r,extra){
     var p=r.p;
     return '<button class="card'+(p.s.length?' instock':'')+'" type="button" data-n="'+p.n+'">'
-      +(isCl()?specHtml(p):isUJ()?ujSpec(p):'<div class="pic'+(isReg()||isSD()||isWP()?' photo':'')+'">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
+      +(isCl()?specHtml(p):isUJ()?ujSpec(p):isBR()?brSpec(p):'<div class="pic'+(isReg()||isSD()||isWP()?' photo':'')+'">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
       +'<div class="body">'+(extra||'')+'<div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
-      +dimsHtml(r)+tags(p)+(isCl()||isReg()||isUJ()||isWP()?refLine(p):isSD()&&p.v.length?'<div class="veh">'+esc(p.v.join(' · '))+'</div>':'')+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
+      +dimsHtml(r)+tags(p)+(isBR()?(p.hub?refLine(p):''):isCl()||isReg()||isUJ()||isWP()?refLine(p):isSD()&&p.v.length?'<div class="veh">'+esc(p.v.join(' · '))+'</div>':'')+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
+  }
+  function brSpec(p){
+    return '<div class="pic spec"'+(p.i?' style="grid-template-columns:auto 1fr;align-items:center;column-gap:12px"':'')+'>'+(p.i?'<img alt="Hub type drawing" src="'+p.i+'" style="width:96px;background:#fff;border-radius:6px;padding:3px">':'')
+      +'<div><div class="big"'+(p.hub?' style="font-size:1.45rem"':'')+'>'+(p.d||'–')+'<small>×</small>'+p.D+'<small>×</small>'+p.B+'</div><div class="sub">bore × outside × width, mm</div></div></div>';
   }
   function ujSpec(p){
     return '<div class="pic spec" style="grid-template-columns:auto 1fr;align-items:center;column-gap:12px">'+(p.i?'<img alt="Type '+p.t+'" src="'+p.i+'" style="width:96px;background:#fff;border-radius:6px;padding:3px">':'')
@@ -600,7 +642,7 @@ dialog::backdrop{background:#000a}
   function go(keep){
     if(!keep)st.limit=60;
     var f=filtered();
-    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' regulators',sol:' solenoids',rec:' rectifiers',uj:' U-joints',sd:' starter drives',wp:' water pumps'})[MODE])):'Nothing matches';
+    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' regulators',sol:' solenoids',rec:' rectifiers',uj:' U-joints',sd:' starter drives',wp:' water pumps',brg:' bearings'})[MODE])):'Nothing matches';
     $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(function(r){return card(r)}).join('')
       :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check how you measured (see How to measure).</div>';
     $('more').hidden=f.list.length<=st.limit;
@@ -617,6 +659,7 @@ dialog::backdrop{background:#000a}
     if(isUJ())return openUJ(p);
     if(isSD())return openSD(p);
     if(isWP())return openWP(p);
+    if(isBR())return openBR(p);
     var size=p.kind==='pad'?(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')
       :(p.pcs.length?p.pcs.map(function(c){return '<b>'+esc(c.ln)+'</b> '+esc(c.pos)+(c.disc?' (discontinued)':'')+'<br>'+(c.R?'Drum Ø '+(c.R*2)+' (R '+c.R+') · c '+c.c+' · a '+c.a+' · b '+c.b:'no size')+(c.core?' · core '+esc(c.core):'')}).join('<br>'):'Export only');
     var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
@@ -627,6 +670,23 @@ dialog::backdrop{background:#000a}
       +(p.r&&p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'+tags(p)
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+encodeURIComponent(p.n)+'">Search '+p.n+' on Google</a></div>';
+    $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
+  }
+  function openBR(p){
+    var q=norm($('q').value);
+    var h='<div class="hd"><h2 class="no" style="font-size:1.6rem;word-break:break-all">'+esc(p.n)+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
+      +(p.i?'<div class="pic" style="background:#fff"><img alt="Hub unit drawing" src="'+p.i+'" style="max-height:30dvh"></div>':'')
+      +'<dl class="kv"><dt>Type</dt><dd>NSK '+esc(p.hub?p.t:p.t.toLowerCase())+'</dd>'
+      +'<dt>Size</dt><dd class="dims">Bore d '+(p.d||'–')+' · outside D '+p.D+' · width '+(/TAPER/i.test(p.t)?'T ':'B ')+p.B+' mm'+(/INCH/i.test(p.t)?' <span class="d">('+[p.d,p.D,p.B].map(function(v){return (v/25.4).toFixed(4).replace(/0+$/,'')+'″'}).join(' × ')+')</span>':'')+'</dd>'
+      +(p.alt&&p.alt.length?'<dt>Also numbered</dt><dd>'+p.alt.map(esc).join('<br>')+'</dd>':'')
+      +(p.hub?'<dt>Position</dt><dd>'+(p.pos==='F'?'Front wheel':p.pos==='R'?'Rear wheel':'Front / rear')+'</dd>':'')
+      +(p.vs.length?'<dt>Sealed versions</dt><dd>'+p.vs.filter(function(v){return v!=='N'&&v!=='NR'}).map(function(v){return esc(p.n+v)+' <span class="d">('+({ZZ:'metal shields',VV:'non-contact rubber seals',DDU:'contact rubber seals = 2RS',Z:'one shield',V:'one seal',DU:'one contact seal'})[v]+')</span>'}).join('<br>')+(p.vs.indexOf('N')>=0?'<br>'+esc(p.n)+'N / NR <span class="d">(snap-ring groove / with snap ring)</span>':'')+'</dd>':'')
+      +(!p.hub&&p.refs.length&&!p.vs.length?'<dt>Same size</dt><dd>'+p.refs.map(function(r){return '<a href="#" data-goto="'+esc(r)+'">'+esc(r)+'</a>'}).join(', ')+'</dd>':'')
+      +'<dt>Catalog page</dt><dd>'+(p.hub?'NSK wheel bearings (HUB II/III) p. '+p.p.split(' ')[1]:'NSK E1102m p. '+p.p)+'</dd>'
+      +'<dt>Your stock list</dt><dd>Not in your POS list</dd></dl>'
+      +(p.hub?'<div><div class="lbl">OEM numbers ('+p.refs.length+')</div><div class="reflist">'+p.refs.map(function(r,i){return '<span'+(q&&p.rn[i].indexOf(q)>=0?' class="hit"':'')+'>'+esc(r)+'</span>'}).join('')+'</div></div>'
+        +'<div><div class="lbl">Vehicles</div><div style="font-size:.88rem;margin-top:4px">'+esc(p.v[0])+'</div></div>':'')
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=NSK+'+encodeURIComponent(p.n)+'+bearing">Search NSK '+esc(p.n)+' on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
   function openWP(p){
@@ -777,6 +837,9 @@ dialog::backdrop{background:#000a}
       +'{"isPart":true,"numbers":["every number printed or stamped on it or on a sticker, exactly as written, e.g. 126000-1234, 27700-0L020, L190-4315, IVR-108, F00M145236"],"brand":"maker text visible e.g. DENSO, HITACHI, MITSUBISHI, BOSCH or \"\"","maker":"ND|HI|MI|BO|NK|SF|unknown (who made it, from text or typical shape)","volt":"12|24|unknown",'
       +'"terminals":0,"features":["short facts: plug shape, number of pins, pin letters (IG, L, S, B, P, F, E, C), screw holes, heat-sink fins, brushes attached"]}\n'
       +'isPart=false if it is not a voltage regulator. Read digits carefully. Never invent numbers.',
+    brg:'These photos show a ROLLING BEARING (ball, roller, tapered, needle or wheel hub bearing) brought to an auto parts shop in Sri Lanka. Respond with ONLY JSON:\n'
+      +'{"isPart":true,"numbers":["every bearing number stamped or printed on the rings, seals or box, exactly as written, e.g. 6203ZZ, 6305DDU, 30205, HR32207J, LM11949, LM11910, NU205, 28BWK12, 42409-12020"],"brand":"e.g. NSK, KOYO, NTN, NACHI, SKF, FAG or \\"\\"","type":"deep groove ball|angular contact|self-aligning|cylindrical roller|tapered roller|spherical roller|thrust|needle|wheel hub unit|unknown","seal":"open|ZZ metal shield|rubber seal|unknown","features":["short facts: one or two rows, flange with bolt holes, ABS ring, cone and cup separate"]}\n'
+      +'Tapered bearings often show two numbers (cone and cup); include both. Read digits carefully (0/O, 1/I, 5/S, 8/B). isPart=false if it is not a bearing. Never invent numbers.',
     wp:'These photos show an engine WATER PUMP brought to an auto parts shop. Respond with ONLY JSON:\n'
       +'{"isPart":true,"numbers":["every number cast, stamped or printed on it or its box, exactly as written, e.g. GWT-79A, 16100-59155, WPT-001, 8-94130-414"],"brand":"","features":["short facts: number of mounting bolt holes, flange or pulley type, outlet pipe yes/no and direction, impeller type (pressed steel / plastic / cast), back plate, heater pipe"]}\n'
       +'isPart=false if it is not a water pump. Read digits carefully. Never invent numbers.',
@@ -801,6 +864,13 @@ dialog::backdrop{background:#000a}
   function pickPool(read){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0,P=items();
     var direct=[];
+    if(isBR()){
+      (read.numbers||[]).forEach(function(n){var k=norm(n),k2=k.replace(BRSUF,'')||k;if(k2.length<3)return;
+        P.forEach(function(p){if(direct.indexOf(p)>=0)return;var nn=norm(p.n);
+          if(nn===k||nn===k2||p.tk.some(function(t){return t.length>=4&&(t===k||t===k2)})||(p.hub&&k2.length>=6&&p.tk.some(function(t){return t.length>=6&&(t.indexOf(k2)>=0||k2.indexOf(t)>=0)})))direct.push(p)})});
+      direct.sort(function(a,b){return a.n.length-b.n.length});
+      return {pool:[],direct:direct.slice(0,12),sized:!!(x||y||z)};
+    }
     if(isWP()){
       (read.numbers||[]).forEach(function(n){var k=norm(n);if(k.length<5)return;P.forEach(function(p){if(direct.indexOf(p)<0&&(norm(p.n)===k||norm(p.n).replace(/A$/,'')===k||p.rn.indexOf(k)>=0))direct.push(p)})});
       var bw=P.filter(function(p){return p.i&&direct.indexOf(p)<0&&(!st.maker||p.g===st.maker)&&!($('hideDisc').checked&&p.disc)});
@@ -850,7 +920,7 @@ dialog::backdrop{background:#000a}
     try{
       msg('<span class="spin"></span> Step 1 of 2: reading the photo…');
       var read=await gemini(shots.map(img64).concat([{text:READ[MODE]}]));
-      if(read.isPart===false){msg('That photo does not look like a '+({pad:'disc brake pad',shoe:'brake shoe',disc:'clutch disc',cover:'clutch cover',reg:'voltage regulator',sol:'starter solenoid',rec:'rectifier',uj:'universal joint',sd:'starter drive',wp:'water pump'})[MODE]+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
+      if(read.isPart===false){msg('That photo does not look like a '+({pad:'disc brake pad',shoe:'brake shoe',disc:'clutch disc',cover:'clutch cover',reg:'voltage regulator',sol:'starter solenoid',rec:'rectifier',uj:'universal joint',sd:'starter drive',wp:'water pump',brg:'bearing'})[MODE]+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
       var pk=pickPool(read);
       if(isWP()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the GMB catalog. Compare the bolt holes and outlet with the photo before selling.');return}
       if(isWP()&&pk.total>pk.lim){showResult(read,pk,[],'');msg('No number found. '+pk.total+' pumps have photos'+(st.maker?' for this maker':'')+'. Tap the vehicle maker above (Toyota, Nissan…), then tap Find it again.',1);return}
@@ -858,6 +928,14 @@ dialog::backdrop{background:#000a}
       if(isReg()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the New-Era catalog. Compare the photo '+(MODE==='reg'?'and plug':'and terminals')+' before selling.');return}
       if(isReg()&&!pk.direct.length&&pk.total>pk.lim){showResult(read,pk,[],'');
         msg('No number found. '+pk.total+' '+(MODE==='sol'?'solenoids':MODE==='rec'?'rectifiers':'regulators')+' still fit'+(pk.br?' ('+REGBR[pk.br]+')':'')+'. Tap the vehicle maker (Toyota, Nissan…) above, then tap Find it again.',1);return}
+      if(isBR()){
+        showResult(read,pk,[],'');
+        if(pk.direct.length)msg('Done. Number matched in the NSK catalog. Measure bore × outside × width to confirm before selling.');
+        else{var tg={'deep groove ball':'Deep groove ball','angular contact':'Angular contact','self-aligning':'Self-aligning ball','cylindrical roller':'Cylindrical roller','tapered roller':'Tapered roller','spherical roller':'Spherical roller','thrust':'Thrust','needle':'Needle roller','wheel hub unit':'Hub unit (wheel)'}[read.type];
+          if(tg&&!st.maker&&!x&&!y){st.maker=tg;[].forEach.call($('makers').children,function(c){c.setAttribute('aria-pressed',c.dataset.m===tg)});go()}
+          msg('No NSK number found on the photo.'+(tg?' It looks like a <b>'+esc(read.type)+'</b> bearing, so I picked that type.':'')+' Measure <b>bore d</b>, <b>outside D</b> and <b>width B</b> with a vernier and type them above: the list updates as you type.',1)}
+        return;
+      }
       if(isUJ()){
         showResult(read,pk,[],'');
         var ty=/^[A-J]$/.test(read.type)?read.type:'';
@@ -941,7 +1019,7 @@ dialog::backdrop{background:#000a}
   }
   $('bScan').onclick=scan;
 
-  var sm=ls('mkf_mode');try{setMode(['pad','shoe','disc','cover','reg','sol','rec','uj','sd','wp'].indexOf(sm)>=0?sm:'pad',true)}catch(e){showErr(e)}
+  var sm=ls('mkf_mode');try{setMode(['pad','shoe','disc','cover','reg','sol','rec','uj','sd','wp','brg'].indexOf(sm)>=0?sm:'pad',true)}catch(e){showErr(e)}
 })();
 </script>
 </body>
