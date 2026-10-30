@@ -151,7 +151,7 @@ dialog::backdrop{background:#000a}
   <header class="top">
     <div>
       <h1>NEME Parts <b>Finder</b></h1>
-      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK, NSK, HASAKI, KYB and Seiken catalogs. Green cards are in your NEME POS list.</p>
+      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK, NSK, NB, KYB and Seiken catalogs. Green cards are in your NEME POS list.</p>
     </div>
     <div class="modes" role="group" aria-label="Part type">
       <button type="button" id="mPad" aria-pressed="true">Disc pads</button>
@@ -222,7 +222,7 @@ dialog::backdrop{background:#000a}
 
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 
-<script src="pads-data.js?v=20261030b"></script>
+<script src="pads-data.js?v=20261030c"></script>
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
@@ -231,7 +231,7 @@ dialog::backdrop{background:#000a}
   function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var BUILD='20261030b';
+  var BUILD='20261030c';
   function showErr(e){var g=$('grid');if(g)g.innerHTML='<div class="empty" style="grid-column:1/-1">Something went wrong: <b>'+esc((e&&e.message)||e)+'</b><br>Send this message to Claude.</div>'}
   window.addEventListener('error',function(ev){var g=$('grid');if(g&&/Loading/.test(g.textContent))showErr(ev.message)});
   var LEG_PAD='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',LEG_SHOE='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';
@@ -285,9 +285,9 @@ dialog::backdrop{background:#000a}
   var HYT={bm:'Brake master',cm:'Clutch master',co:'Clutch slave',wc:'Wheel cylinder'};
   var HYTL={bm:'brake master cylinder',cm:'clutch master cylinder',co:'clutch operating (slave) cylinder',wc:'wheel cylinder'};
   var BORES=[['5/8',15.88],['11/16',17.46],['3/4',19.05],['13/16',20.64],['7/8',22.22],['15/16',23.81],['1',25.4],['1-1/16',26.99],['1-1/8',28.58],['1-3/16',30.16],['1-1/4',31.75],['1-5/16',33.34],['1-3/8',34.93]];
-  function hyItems(){var seen={},out=(window.HSK_CYL||[]).map(function(r){var n=(r[0]||r[1]).toUpperCase();if(seen[n]){seen[n]++;n=n+' ('+seen[n]+')'}else seen[n]=1;
-    var refs=[r[0],r[1],r[11]].filter(Boolean),words=(r[3]+' '+r[8]).split(/[\s,·()\/]+/).filter(function(w){return w.length>1});
-    return {kind:'hy',n:n,oem:r[0],no:r[1],t:r[2],g:r[3],bore:r[4],mm:r[5],pos:r[6],yr:r[7],v:r[8]?[r[8]]:[],p:r[9],i:r[10]?'hasimg/'+r[10]+'.jpg?v='+BUILD:null,alt:r[11],
+  function hyItems(){var seen={},out=(window.HSK_CYL||[]).map(function(r,ix){var n=(r[0]||'NO OEM #'+(ix+1)).toUpperCase();if(seen[n]){seen[n]++;n=n+' ('+seen[n]+')'}else seen[n]=1;
+    var refs=[r[0]].concat(r[11]?r[11].split(' / '):[]).filter(Boolean),words=(r[3]+' '+r[8]).split(/[\s,·()\/]+/).filter(function(w){return w.length>1});
+    return {kind:'hy',n:n,oem:r[0],no:r[1],t:r[2],g:r[3],bore:r[4],mm:r[5],pos:r[6],yr:r[7],v:r[8]?[r[8]]:[],p:r[9],i:r[10]?'nbimg/'+r[10]+'.jpg?v='+BUILD:null,alt:r[11],
       refs:refs,rn:refs.map(norm),tk:refs.map(norm).concat(words.map(norm)),s:[],r:[],of:[],disc:false}});
     linkPosHY(out);return out}
   function linkPosHY(out){
@@ -416,7 +416,7 @@ dialog::backdrop{background:#000a}
       pos:[['','Front & rear'],['F','Front'],['R','Rear']],
       help:['Type the Seiken code (<b>SC</b> cups/washers, <b>SK</b> repair kits, <b>SM-/SR-/SW-</b> pumps and cylinders, <b>SH</b> hoses, <b>SB</b> CV boots), an OEM number shown in the list (e.g. <b>47714-B2020</b>), or a vehicle like <b>ELF</b>, <b>HIACE</b> or <b>CANTER</b>.',
         '<b>Size</b> = bore in inches for cups, kits, pumps and wheel cylinders (tap 13/16″ etc.), piston Ø in mm for caliper pistons, length in mm for hoses, disc Ø for rotors. You can type mm.',
-        'The pump numbers SM-…, SR-…, SW-… are the same numbers as in the HASAKI Cylinders tab, and many pumps show the matching Seiken repair kit in brackets, e.g. SM-G338 (SK82151).',
+        'Many pumps show the matching Seiken repair kit in brackets, e.g. SM-G338 (SK82151): search the kit number to find both.',
         '<b>CV boots (Seiki)</b>: the size in brackets is big end Ø × small end Ø, e.g. (79 X 24). Type the big end in the first box and the small end in the second. Rack boot and dust cover drawings show their sizes on the picture.',
         'Lists: Seiken price list 11 Jan 2024 and Seiki boots list 24 Nov 2025. Prices are not shown on this page.'],
       example:{x:'',y:'',note:''}},
@@ -428,10 +428,10 @@ dialog::backdrop{background:#000a}
         '-F(R) / -F(L) = front right / front left. Struts are usually different left and right: check the side before selling.',
         'The KYB catalog has no length or mounting measurements, so compare the top and bottom mounts (stem, eye ring, bracket) with the old shock.'],
       example:{x:'',y:'',note:''}},
-    hy:{x:['Bore Ø','mm, or tap a size below','20.64'],y:['','',''],z:['','',''],q:'47201-35750 / SW-T031 / Hiace',scanH:'Scan the old cylinder',
+    hy:{x:['Bore Ø','mm, or tap a size below','20.64'],y:['','',''],z:['','',''],q:'47201-35750 / 8-94128-144-2 / Hiace',scanH:'Scan the old cylinder',
       tip:'Photograph the cylinder from the side so the mounting flange, bleeder nipple, pipe ports and any reservoir show; add a close-up of any cast or stamped number (the bore size like 13/16 is often cast on the body). Pick the type and vehicle maker below first: the AI then compares with fewer photos.',
       pos:[['','All'],['FRONT','Front'],['REAR','Rear']],
-      help:['Type the genuine (OEM) number like <b>47201-35750</b> or <b>8-94128-144-2</b>, the HASAKI number (<b>SM-</b> master, <b>SR-</b> clutch slave, <b>SW-</b> wheel cylinder), or a vehicle like <b>HIACE</b>, <b>ELF</b> or <b>CANTER</b>.',
+      help:['Type the genuine (OEM) number like <b>47201-35750</b> or <b>8-94128-144-2</b>, or a vehicle like <b>HIACE</b>, <b>ELF</b> or <b>CANTER</b>.',
         '<b>Bore Ø</b> = piston bore size. It is usually cast on the body in inches (13/16, 7/8, 1-1/8). Tap the size button, or type the mm if you measured it (13/16″ = 20.64 mm).',
         'Type buttons: <b>Brake master</b>, <b>Clutch master</b>, <b>Clutch slave</b> (operating cylinder), <b>Wheel cylinder</b>.',
         'Wheel cylinders come in left/right and fore/after pairs (RF, LF, RA, LA): check the side and the pipe/bleeder position before selling.'],
@@ -490,7 +490,7 @@ dialog::backdrop{background:#000a}
     $('helpImg').hidden=isCl()||isReg()||m==='uj'||m==='sd'||m==='wp'||m==='brg'||m==='hy'||m==='kyb'||m==='sk';if(!isCl()&&!isReg()&&m!=='uj'&&m!=='sd'&&m!=='wp'&&m!=='brg'&&m!=='hy'&&m!=='kyb'&&m!=='sk')$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
     $('posSel').parentNode.hidden=c.pos.length<2;$('posSel').previousSibling&&0;
     $('helpList').innerHTML=c.help.map(function(h){return '<li>'+h+'</li>'}).join('');
-    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd'||m==='hy'||m==='kyb'||m==='sk');st.fig='';$('lq').textContent=m==='sk'?'Seiken / OEM number or vehicle':m==='kyb'?'KYB / OEM number or vehicle':m==='hy'?'OEM / HASAKI number or vehicle':m==='brg'?'Bearing number, OEM or vehicle':isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
+    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd'||m==='hy'||m==='kyb'||m==='sk');st.fig='';$('lq').textContent=m==='sk'?'Seiken / OEM number or vehicle':m==='kyb'?'KYB / OEM number or vehicle':m==='hy'?'OEM number or vehicle':m==='brg'?'Bearing number, OEM or vehicle':isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
     $('scanOut').innerHTML='';msg('');
     ls('mkf_mode',m);
     load(m,function(){
@@ -523,7 +523,7 @@ dialog::backdrop{background:#000a}
     $('makers').innerHTML=[['',P.length]].concat(keys.map(function(k){return [k,cnt[k]]})).map(function(m){
       var name=m[0]===''?'All':isBR()?m[0]:isHY()||isKY()||isSK()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isSD()||isWP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isUJ()?m[0].replace('UNIVERSAL JOINT','').replace(' VEHICLE & TRUCK','').trim().toLowerCase().replace(/(^|\s|\()\w/g,function(c){return c.toUpperCase()}):isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
       return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+name+'<small>'+m[1]+'</small></button>'}).join('');
-    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken & Seiki parts'})[MODE]+(isSK()?' · '+P.filter(function(p){return p.br==='Seiki'}).length+' Seiki boots · '+P.filter(function(p){return p.s.length}).length+' in your POS':isKY()?' · KYB 2025 · '+P.reduce(function(a,p){return a+p.refs.length},0)+' OEM numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isHY()?' · HASAKI catalog · '+P.filter(function(p){return p.s.length}).length+' in your POS':isBR()?' · NSK catalog · '+P.filter(function(p){return p.hub}).length+' wheel hub units · '+P.filter(function(p){return p.s.length}).length+' in your POS':isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
+    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken & Seiki parts'})[MODE]+(isSK()?' · '+P.filter(function(p){return p.br==='Seiki'}).length+' Seiki boots · '+P.filter(function(p){return p.s.length}).length+' in your POS':isKY()?' · KYB 2025 · '+P.reduce(function(a,p){return a+p.refs.length},0)+' OEM numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isHY()?' · NB catalog Jan 2024 · '+P.filter(function(p){return p.s.length}).length+' in your POS':isBR()?' · NSK catalog · '+P.filter(function(p){return p.hub}).length+' wheel hub units · '+P.filter(function(p){return p.s.length}).length+' in your POS':isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
     if(isSK()){
       var D=window.SKN_LIST,sc={},bc={};P.forEach(function(p){sc[p.t]=(sc[p.t]||0)+1;p.mm.forEach(function(m){var b=BORES.find(function(x){return Math.abs(x[1]-m)<0.3});if(b)bc[b[0]]=(bc[b[0]]||0)+1})});
       $('drums').innerHTML='<span class="lbl" style="align-self:center">Part</span>'+D.S.map(function(n,i){return [n,i]}).filter(function(x){return sc[x[1]]}).map(function(x){
@@ -682,7 +682,7 @@ dialog::backdrop{background:#000a}
     if(p.kind==='sk'&&p.br==='Seiki')return '<div class="dims">'+tcase(p.sn.replace('SEIKI ',''))+'</div><div class="veh">'+esc(p.v[0])+'</div>'+(p.refs.length>1?'<div class="refs">OEM: '+p.refs.slice(1).map(esc).join(', ')+'</div>':'');
     if(p.kind==='sk')return '<div class="dims">'+tcase(p.sn)+(p.size?' · <span class="'+(r.s&&$('x').value?cls(r.s.df[0]):'')+'">'+esc(p.size)+(/MM|X/.test(p.size)?'':'″')+(p.mm.length&&!/MM|X/.test(p.size)?' <span class="d">('+p.mm[0].toFixed(1)+' mm)</span>':'')+'</span>':'')+'</div><div class="veh">'+esc(p.v[0])+'</div>'+(p.refs.length>1?'<div class="refs">Also: '+p.refs.slice(1).map(esc).join(', ')+'</div>':'');
     if(p.kind==='kyb')return '<div class="dims">'+esc(kyType(p))+'</div>'+(p.v.length?'<div class="veh">'+esc(p.v[0])+(p.v.length>1?' · +'+(p.v.length-1)+' more':'')+'</div>':'')+(p.refs.length?'<div class="refs">OEM: '+(function(){var q=norm($('q').value),hit=q?p.refs.filter(function(r,i){return p.rn[i].indexOf(q)>=0}):[];var sh=hit.concat(p.refs.filter(function(r){return hit.indexOf(r)<0})).slice(0,2);return sh.map(function(r){return hit.indexOf(r)>=0?'<b>'+esc(r)+'</b>':esc(r)}).join(', ')+(p.refs.length>2?' +'+(p.refs.length-2):'')})()+'</div>':'');
-    if(p.kind==='hy')return '<div class="dims"><span class="'+(r.s&&$('x').value?cls(r.s.df[0]):'')+'">Ø '+esc(p.bore||'–')+(p.mm.length?' <span class="d">('+p.mm.map(function(m){return m.toFixed(1)}).join(' / ')+' mm)</span>':'')+'</span> · '+HYT[p.t]+(p.pos?' · '+esc(p.pos.charAt(0)+p.pos.slice(1).toLowerCase()):'')+'</div>'
+    if(p.kind==='hy')return '<div class="dims"><span class="'+(r.s&&$('x').value?cls(r.s.df[0]):'')+'">Ø '+esc(p.bore||'–')+(p.mm.length?' <span class="d">('+p.mm.map(function(m){return m.toFixed(1)}).join(' / ')+' mm)</span>':'')+'</span> · '+HYT[p.t]+(p.pos?' · '+esc(p.pos.split(' ').map(function(w,i){return i?w:w.charAt(0)+w.slice(1).toLowerCase()}).join(' ')):'')+'</div>'
       +'<div class="veh">'+(p.no?'<b>'+esc(p.no)+'</b> · ':'')+esc(p.v[0]||'')+(p.yr?' · '+esc(p.yr):'')+'</div>';
     if(p.kind==='brg'){var f3=function(lab,val,diff){return '<span class="'+cls(diff)+'">'+lab+' '+val+'</span>'};
       return '<div class="dims">'+(p.d?f3('d',p.d,df[0]):'d -')+' × '+f3('D',p.D,df[1])+' × '+f3('B',p.B,df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(2).replace(/\.?0+$/,'')+')</span>':'')+'</div><div class="veh">'+esc(p.hub?p.t:p.t.toLowerCase().replace(/^\w/,function(c){return c.toUpperCase()}))+'</div>'}
@@ -715,7 +715,7 @@ dialog::backdrop{background:#000a}
       if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
     }else if(isSK()){
       if(p.pos.F)t+='<span class="tag rear">Front</span>';if(p.pos.R)t+='<span class="tag rear">Rear</span>';
-      if(/^S[MRW]-/.test(p.n))t+='<span class="tag">Same no. as HASAKI</span>';
+      
     }else if(isKY()){
       if(p.pos.F)t+='<span class="tag rear">Front</span>';if(p.pos.R)t+='<span class="tag rear">Rear</span>';
       if(p.f.indexOf('◆')>=0)t+='<span class="tag">In preparation</span>';if(p.f.indexOf('▼')>=0)t+='<span class="tag disc">While stocks last</span>';
@@ -825,7 +825,7 @@ dialog::backdrop{background:#000a}
       +'<dt>Size</dt><dd class="dims">'+(p.mm2?'big end Ø '+p.mm[0]+' mm × small end Ø '+p.mm2+' mm':p.i&&!p.size?'see the drawing (sizes in mm)':p.size?esc(p.size)+(/MM|X/.test(p.size)?'':'″')+(p.mm.length?' = '+p.mm[0].toFixed(2)+' mm':''):'not given')+(/X/.test(p.size)?' <span class="d">(disc Ø × height #studs)</span>':'')+'</dd>'
       +'<dt>Description</dt><dd>'+esc(p.v[0])+'</dd>'
       +(p.refs.length>1?'<dt>Other numbers</dt><dd>'+p.refs.slice(1).map(function(r){return '<a href="#" data-goto="'+esc(r)+'">'+esc(r)+'</a>'}).join(', ')+'</dd>':'')
-      +(/^S[MRW]-/.test(p.n)?'<dt>HASAKI</dt><dd>Same number as the HASAKI catalog: see the Cylinders tab for the photo.</dd>':'')
+      
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent(p.br+' '+p.code)+'">Search '+p.br+' '+esc(p.code)+' on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
@@ -844,16 +844,16 @@ dialog::backdrop{background:#000a}
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
   function openHY(p){
-    var h='<div class="hd"><h2 class="no" style="font-size:1.6rem">'+esc(p.oem||p.no)+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
+    var h='<div class="hd"><h2 class="no" style="font-size:1.6rem">'+esc(p.oem||'No OEM number')+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
       +(p.i?'<div class="pic" style="background:#fff"><img alt="Photo of '+esc(p.n)+'" src="'+p.i+'" style="max-height:34dvh"></div>':'')
-      +'<dl class="kv"><dt>Part</dt><dd>HASAKI '+HYTL[p.t]+' · '+esc(p.g)+'</dd>'
+      +'<dl class="kv"><dt>Part</dt><dd>NB '+HYTL[p.t]+' · '+esc(p.g)+'</dd>'
       +'<dt>Bore</dt><dd class="dims">'+esc(p.bore||'not given')+(p.mm.length?' = '+p.mm.map(function(m){return m.toFixed(2)}).join(' / ')+' mm':'')+'</dd>'
-      +(p.no?'<dt>HASAKI no.</dt><dd>'+esc(p.no)+'</dd>':'')+(p.alt?'<dt>Other no.</dt><dd>'+esc(p.alt)+'</dd>':'')
+      +(p.alt?'<dt>Other OEM no.</dt><dd>'+esc(p.alt)+'</dd>':'')
       +(p.pos?'<dt>Position</dt><dd>'+esc(p.pos)+'</dd>':'')+(p.yr?'<dt>Year</dt><dd>'+esc(p.yr)+'</dd>':'')
       +'<dt>Fits</dt><dd>'+esc(p.v[0]||'-')+'</dd>'
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd>'
-      +'<dt>Catalog page</dt><dd>HASAKI 2020 p. '+p.p+'</dd></dl>'
-      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent((p.oem||p.no)+' '+HYTL[p.t])+'">Search '+esc(p.oem||p.no)+' on Google</a></div>';
+      +'<dt>Catalog page</dt><dd>NB price list 4 Jan 2024, p. '+p.p+'</dd></dl>'
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent((p.oem||p.v[0]||'')+' '+HYTL[p.t])+'">Search on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
   function openBR(p){
@@ -1150,7 +1150,7 @@ dialog::backdrop{background:#000a}
         if(pk.direct.length)msg('Done. Number matched in the KYB catalog. Check front/rear and left/right, and compare the mounts before selling.');
         else msg('No KYB or OEM number from the catalog was readable. Wipe the label and take a sharp close-up, or type the vehicle (e.g. HILUX) above and pick Front / Rear.',1);
         return}
-      if(isHY()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the HASAKI catalog. Check the bore size and pipe ports before selling.');return}
+      if(isHY()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the NB catalog. Check the bore size and pipe ports before selling.');return}
       if(isHY()&&pk.total>pk.lim){showResult(read,pk,[],'');msg('No number found. '+pk.total+' cylinders still fit'+(pk.ty?' ('+HYT[pk.ty]+')':'')+'. Tap the vehicle maker above (Toyota, Isuzu…) and the bore size, then tap Find it again.',1);return}
       if(isBR()){
         showResult(read,pk,[],'');
@@ -1183,7 +1183,7 @@ dialog::backdrop{background:#000a}
         var all=pk.pool,round=[],HYC=isHY();
         var ask=async function(cands,n){
           for(var ci=0;ci<cands.length;ci++){var pp=cands[ci];if(pp.i&&pp.i.indexOf('data:')!==0){try{pp.i=await toData(pp.i)}catch(e){}}}
-          var pr=shots.map(img64);pr.push({text:HYC?'Above: photo(s) of the customer\'s old hydraulic cylinder. Below: candidate HASAKI catalog photos, each labelled with its number.':'Above: photo(s) of the customer\'s worn water pump. Below: candidate GMB catalog photos, each labelled with its number.'});
+          var pr=shots.map(img64);pr.push({text:HYC?'Above: photo(s) of the customer\'s old hydraulic cylinder. Below: candidate NB catalog photos, each labelled with its number.':'Above: photo(s) of the customer\'s worn water pump. Below: candidate GMB catalog photos, each labelled with its number.'});
           cands.forEach(function(p){pr.push({text:'Candidate '+p.n+' ('+(HYC?HYT[p.t]+', bore '+p.bore+', '+(p.pos?p.pos+', ':''):'')+p.g+(p.v[0]?', '+p.v[0]:'')+'):'});pr.push(img64(p.i))});
           pr.push({text:(HYC?'Which candidates show the SAME cylinder as the photographed one? Compare the body outline and length, mounting flange shape and bolt holes, number and position of pipe ports and bleeder nipple, reservoir type, push rod/clevis, adjuster. Left and right versions are mirror images: prefer the same side. Ignore dirt, rust and colour. '+(pk.bm?'Bore is about '+pk.bm.toFixed(1)+' mm. ':''):'Which candidates show the SAME pump as the photographed one? Compare the body outline, number and position of mounting bolt holes, flange/pulley, outlet pipe and its direction, impeller and back plate. Ignore dirt, rust and colour. ')
             +(read.numbers&&read.numbers.length?'Numbers read from the part: '+read.numbers.join(', ')+'. ':'')+'Respond with ONLY JSON: {"ranking":[{"no":"candidate number","score":0-100,"why":"one short sentence"}],"note":""} with the best '+n+', best first.'});
