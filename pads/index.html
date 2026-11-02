@@ -200,7 +200,7 @@ body.unlocked #lock-screen{display:none}
     <div>
       <h1>NEME Parts <b>Finder</b></h1>
       <div class="userbar"><span id="userBadge"></span><button type="button" id="bLogout">Sign out</button></div>
-      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK, NSK, NB, KYB, Seiken, GSP and HKT catalogs. Green cards are in your NEME POS list.</p>
+      <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK, NSK, NB, KYB, Seiken, GSP, HKT and Tonyco catalogs. Green cards are in your NEME POS list.</p>
     </div>
     <div class="modes" role="group" aria-label="Part type">
       <button type="button" id="mPad" aria-pressed="true">Disc pads</button>
@@ -219,6 +219,7 @@ body.unlocked #lock-screen{display:none}
       <button type="button" id="mSk" aria-pressed="false">Seiken</button>
       <button type="button" id="mCv" aria-pressed="false">CV joints</button>
       <button type="button" id="mGp" aria-pressed="false">Glow plugs</button>
+      <button type="button" id="mOs" aria-pressed="false">Oil seals</button>
     </div>
   </header>
   <span class="lbl" id="count">Loading catalog…</span>
@@ -273,7 +274,7 @@ body.unlocked #lock-screen{display:none}
 
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 
-<script src="pads-data.js?v=20261102a"></script>
+<script src="pads-data.js?v=20261102b"></script>
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
@@ -282,7 +283,7 @@ body.unlocked #lock-screen{display:none}
   function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var BUILD='20261102a';
+  var BUILD='20261102b';
   // ---- Login: same accounts as the NEME POS (DB.staffUsers in localStorage 'neme_v1', SHA-256 password hashes) ----
   var DEF_USERS=[{username:'vinuban',displayName:'Vinuban',passwordHash:'01e7ace56a2bd69bcd17a9d17061f37acd8194066309fe82aa7e9fda005be39e',role:'owner',active:true},
     {username:'Dhushnath',displayName:'Dhushnath',passwordHash:'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',role:'staff',active:true}];
@@ -315,7 +316,7 @@ body.unlocked #lock-screen{display:none}
     SK:'Skoda',SA:'Saab',JE:'Jeep',CO:'Commercial',IN:'India',TK:'Toyota Ind.',TC:'TCM',KM:'Komatsu',MT:'Mitsubishi Ind.',NI:'Nissan Ind.'};
   var COVTYPE={DT:'Diaphragm (tag)',DS:'Diaphragm (strap)',LB:'Lever (boss)',LS:'Lever (strap)',TW:'Twin',PL:'Pull',DL:'Diaphragm (lever)'};
   function mkKey(p){return (p.kind==='disc'||p.kind==='cover')?p.n.slice(0,2):p.n.charAt(1)}
-  function mkName(p){if(p.kind==='gp')return p.mks.slice(0,2).map(function(m){return m.charAt(0)+m.slice(1).toLowerCase()}).join(', ')+(p.mks.length>2?' +':'');if(p.kind==='kyb')return p.mks.slice(0,2).map(function(m){return m.charAt(0)+m.slice(1).toLowerCase()}).join(', ')+(p.mks.length>2?' +':'');if(p.kind==='brg')return p.hub?(p.mk.length<=4?p.mk:p.mk.charAt(0)+p.mk.slice(1).toLowerCase()):'NSK';if(p.kind==='hy'||p.kind==='cv')return p.g.charAt(0)+p.g.slice(1).toLowerCase();if(p.kind==='sd')return p.g.charAt(0)+p.g.slice(1).toLowerCase();var k=mkKey(p);return (p.kind==='disc'||p.kind==='cover')?(EXMK[k]||k):(MK[k]||'')}
+  function mkName(p){if(p.kind==='os'||p.kind==='gp')return p.mks.slice(0,2).map(function(m){return m.charAt(0)+m.slice(1).toLowerCase()}).join(', ')+(p.mks.length>2?' +':'');if(p.kind==='kyb')return p.mks.slice(0,2).map(function(m){return m.charAt(0)+m.slice(1).toLowerCase()}).join(', ')+(p.mks.length>2?' +':'');if(p.kind==='brg')return p.hub?(p.mk.length<=4?p.mk:p.mk.charAt(0)+p.mk.slice(1).toLowerCase()):'NSK';if(p.kind==='hy'||p.kind==='cv')return p.g.charAt(0)+p.g.slice(1).toLowerCase();if(p.kind==='sd')return p.g.charAt(0)+p.g.slice(1).toLowerCase();var k=mkKey(p);return (p.kind==='disc'||p.kind==='cover')?(EXMK[k]||k):(MK[k]||'')}
   function isCl(){return MODE==='disc'||MODE==='cover'}
   function isR(m){return m==='reg'||m==='sol'||m==='rec'}
   function isUJ(){return MODE==='uj'}
@@ -327,6 +328,18 @@ body.unlocked #lock-screen{display:none}
   function isSK(){return MODE==='sk'}
   function isCV(){return MODE==='cv'}
   function isGP(){return MODE==='gp'}
+  function isOS(){return MODE==='os'}
+  function osItems(){var out=(window.TNC_SEAL||[]).map(function(r){var refs=r[1].concat(r[2]);if(refs.indexOf(r[0])<0)refs.unshift(r[0]);
+    var sz=r[3].map(function(z){var p=z.split('-').map(function(x){return parseFloat(x)||0});return p});
+    return {kind:'os',n:r[0],nok:r[1],oem:r[2],sizes:r[3],sz:sz,d:r[4],D:r[5],b:r[6],apps:r[7],mks:r[8],cam:!!(r[9]&1),plate:!!(r[9]&2),sleeve:!!(r[9]&4),
+      v:r[7].map(function(a){return a[0]+' '+a[1]+' · '+a[2]}),refs:refs,rn:refs.map(norm),s:[],r:[],of:[],disc:false,i:null,g:''}});
+    var map={};out.forEach(function(p){p.rn.forEach(function(k){if(k.length>=6)(map[k]=map[k]||[]).push(p)})});
+    var GW=/SEAL|NOK|OIL/i;
+    posParts().forEach(function(pt){var txt=[pt.name,pt.sku,pt.group,pt.category].filter(Boolean).join(' '),gate=GW.test(txt);
+      var tk=String(txt).toUpperCase().split(/[\s,;()\[\]\/]+/).filter(Boolean),hit=[];
+      tk.forEach(function(t){var k=norm(t);if(!map[k])return;if(!gate&&!/\d{5}/.test(k))return;map[k].forEach(function(p){if(hit.indexOf(p)<0)hit.push(p)})});
+      hit.forEach(function(p){var lab=pt.name+(pt.qty!=null?' · qty '+pt.qty:'');if(p.s.indexOf(lab)<0)p.s.push(lab)})});
+    return out}
   function gpItems(){var out=(window.HKT_GP||[]).map(function(r){var refs=[r[0]].concat(r[12]),apps=r[11];
     var td=parseFloat((r[7]||'').split('x')[0])||0,v=apps.map(function(a){return [a[0],a[1],a[2],a[3]].filter(Boolean).join(' ')+(a[4]?' ('+a[4]+(a[5]?'–'+a[5]:'–')+')':'')});
     return {kind:'gp',n:r[0],i:r[1]?'glimg/'+r[1]+'.jpg?v='+BUILD:null,L:r[2],a:r[3],b:r[4],term:r[5],hex:r[6],thr:r[7],td:td,pv:r[8],pvn:parseFloat(r[8])||0,note:r[9],mks:r[10],apps:apps,v:v.length?v:(r[9]?[r[9]]:[]),
@@ -455,7 +468,7 @@ body.unlocked #lock-screen{display:none}
   function clutchItems(kind){return (window.EX_CLUTCH||[]).filter(function(c){return c.k===kind}).map(function(c){
     var refs=c.r||[];return {kind:kind,n:c.n,s:c.s||[],d:c.d||null,refs:refs,rn:refs.map(norm),v:c.v||[],o:c.o||null,of:c.of||[],nw:!!c.nw,
       disc:!!c.o,r:[],i:null}})}
-  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null,reg:null,sol:null,uj:null,sd:null,rec:null,wp:null,brg:null,hy:null,kyb:null,sk:null,cv:null,gp:null},st={maker:'',limit:60,brand:'',fig:''};
+  var MODE='pad',DATA={pad:null,shoe:null,disc:null,cover:null,reg:null,sol:null,uj:null,sd:null,rec:null,wp:null,brg:null,hy:null,kyb:null,sk:null,cv:null,gp:null,os:null},st={maker:'',limit:60,brand:'',fig:''};
   function items(){return DATA[MODE]||[]}
 
   var CFG={
@@ -507,6 +520,14 @@ body.unlocked #lock-screen{display:none}
         '<b>Type</b> buttons: A = external circlip, B = internal circlip, C–F = bolt plates, G/H = wing bearings, J = staked.',
         'You can also type an OEM number (Toyota 37201-…, Isuzu 1-37300-…), a Spicer or Borg-Warner number, or a vehicle like <b>ELF</b>.'],
       example:{x:'23.82',y:'61.3',note:'Example: 23.82 mm cup, 61.3 mm long. Type your own sizes.'}},
+    os:{x:['Shaft Ø (d)','mm, inside','42'],y:['Outside Ø (D)','mm','60'],z:['Width (b)','mm, optional','7'],q:'AH2492E / 90311-80010 / 2L / 4JB1',scanH:'Scan the old oil seal',
+      tip:'Photograph the seal face so the printed size (e.g. 42 60 7) and any NOK number show sharply. Measure inside Ø × outside Ø × width with a vernier: that is the fastest way to find it.',
+      pos:[['','All']],
+      help:['<b>Shaft Ø (d)</b> = inside diameter (the shaft it seals). <b>Outside Ø (D)</b> = outside diameter (the housing). <b>Width (b)</b> = thickness. Sizes like 50-68-9/14 mean width 9 at the lip and 14 at the flange.',
+        'Type the NOK number (<b>AH2492E</b>), a genuine number (<b>90311-80010</b>), or an engine code like <b>2L</b>, <b>4JB1</b>, <b>6D16</b>.',
+        'This list covers <b>engine crankshaft front/rear and camshaft seals</b> (Tonyco catalog) for Nissan, Mitsubishi, Isuzu, Hino, Toyota, Mazda, Komatsu and Caterpillar.',
+        'Colours (BK black, BROWN, BLUE…) are the rubber colour. "Plate shape" seals have a flat plate. Some seals come with a wear sleeve.'],
+      example:{x:'',y:'',note:''}},
     gp:{x:['Length','mm, overall','97'],y:['Thread Ø','mm, e.g. 10 or 12','10'],z:['Volts','rated voltage, optional','11'],q:'PT-155 / 19850-54010 / 1KZ / Hiace',scanH:'Scan the old glow plug',
       tip:'Lay the glow plug on paper next to a ruler and photograph it from the side; add a close-up of any stamped number on the hex. Then measure the overall length and the thread size: those find it fast.',
       pos:[['','All']],
@@ -592,17 +613,17 @@ body.unlocked #lock-screen{display:none}
   };
 
   function setMode(m,initial){
-    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover'],['mReg','reg'],['mSol','sol'],['mRec','rec'],['mUj','uj'],['mSd','sd'],['mWp','wp'],['mBrg','brg'],['mHy','hy'],['mKyb','kyb'],['mSk','sk'],['mCv','cv'],['mGp','gp']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
+    MODE=m;[['mPad','pad'],['mShoe','shoe'],['mDisc','disc'],['mCover','cover'],['mReg','reg'],['mSol','sol'],['mRec','rec'],['mUj','uj'],['mSd','sd'],['mWp','wp'],['mBrg','brg'],['mHy','hy'],['mKyb','kyb'],['mSk','sk'],['mCv','cv'],['mGp','gp'],['mOs','os']].forEach(function(b){$(b[0]).setAttribute('aria-pressed',m===b[1])});
     var c=CFG[m];
     ['x','y','z'].forEach(function(k){$('l'+k).textContent=c[k][0];$('u'+k).textContent=c[k][1];$(k).placeholder=c[k][2]});
     $('q').placeholder=c.q;$('scanH').textContent=c.scanH;$('scanTip').textContent=c.tip;
     $('posSel').innerHTML=c.pos.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>'}).join('');
     document.querySelector('.mrow').classList.toggle('reg',m==='sol'||m==='wp'||m==='kyb');document.querySelector('.mrow').classList.toggle('rg',m==='reg'||m==='hy');document.querySelector('.mrow').classList.toggle('rec',m==='rec'||m==='sk');document.querySelector('.mrow').classList.toggle('sd',m==='sd');st.brand='';
-    $('tolL').hidden=m==='sol'||m==='sd'||m==='wp'||m==='kyb';$('discL').hidden=isR(m)||m==='sd'||m==='brg'||m==='hy'||m==='sk'||m==='cv'||m==='gp';$('posL').textContent=isR(m)?'Voltage':m==='cover'?'Type':'Position';
-    $('helpImg').hidden=isCl()||isReg()||m==='uj'||m==='sd'||m==='wp'||m==='brg'||m==='hy'||m==='kyb'||m==='sk'||m==='cv'||m==='gp';if(!isCl()&&!isReg()&&m!=='uj'&&m!=='sd'&&m!=='wp'&&m!=='brg'&&m!=='hy'&&m!=='kyb'&&m!=='sk'&&m!=='cv'&&m!=='gp')$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
+    $('tolL').hidden=m==='sol'||m==='sd'||m==='wp'||m==='kyb';$('discL').hidden=isR(m)||m==='sd'||m==='brg'||m==='hy'||m==='sk'||m==='cv'||m==='gp'||m==='os';$('posL').textContent=isR(m)?'Voltage':m==='cover'?'Type':'Position';
+    $('helpImg').hidden=isCl()||isReg()||m==='uj'||m==='sd'||m==='wp'||m==='brg'||m==='hy'||m==='kyb'||m==='sk'||m==='cv'||m==='gp'||m==='os';if(!isCl()&&!isReg()&&m!=='uj'&&m!=='sd'&&m!=='wp'&&m!=='brg'&&m!=='hy'&&m!=='kyb'&&m!=='sk'&&m!=='cv'&&m!=='gp'&&m!=='os')$('helpImg').src='data:image/png;base64,'+(m==='pad'?LEG_PAD:LEG_SHOE);
     $('posSel').parentNode.hidden=c.pos.length<2;$('posSel').previousSibling&&0;
     $('helpList').innerHTML=c.help.map(function(h){return '<li>'+h+'</li>'}).join('');
-    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd'||m==='hy'||m==='kyb'||m==='sk'||m==='cv');st.fig='';$('lq').textContent=m==='gp'?'HKT / OEM number, engine or vehicle':m==='cv'?'Joint / GSP number or vehicle':m==='sk'?'Seiken / OEM number or vehicle':m==='kyb'?'KYB / OEM number or vehicle':m==='hy'?'OEM number or vehicle':m==='brg'?'Bearing number, OEM or vehicle':isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
+    $('drums').hidden=!(m==='shoe'||m==='disc'||isR(m)||m==='uj'||m==='sd'||m==='hy'||m==='kyb'||m==='sk'||m==='cv');st.fig='';$('lq').textContent=m==='os'?'NOK / OEM number or engine':m==='gp'?'HKT / OEM number, engine or vehicle':m==='cv'?'Joint / GSP number or vehicle':m==='sk'?'Seiken / OEM number or vehicle':m==='kyb'?'KYB / OEM number or vehicle':m==='hy'?'OEM number or vehicle':m==='brg'?'Bearing number, OEM or vehicle':isR(m)||m==='sd'||m==='wp'?'Part number, OEM number or vehicle':'Or part number';
     $('scanOut').innerHTML='';msg('');
     ls('mkf_mode',m);
     load(m,function(){
@@ -614,10 +635,10 @@ body.unlocked #lock-screen{display:none}
   }
   function load(m,cb){
     if(DATA[m])return cb();
-    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:m==='reg'?function(){return regItems('NE_REG')}:m==='sol'?function(){return regItems('NE_SOL',1)}:m==='rec'?function(){return regItems('NE_REC',2)}:m==='uj'?ujItems:m==='sd'?sdItems:m==='wp'?wpItems:m==='brg'?brgItems:m==='hy'?hyItems:m==='kyb'?kybItems:m==='sk'?skItems:m==='cv'?cvItems:m==='gp'?gpItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':m==='reg'?'NE_REG':m==='sol'?'NE_SOL':m==='rec'?'NE_REC':m==='uj'?'GMB_UJ':m==='sd'?'NKK_SD':m==='wp'?'GMB_WP':m==='brg'?'NSK_BRG':m==='hy'?'HSK_CYL':m==='kyb'?'KYB_SA':m==='sk'?'SKN_LIST':m==='cv'?'GSP_CV':m==='gp'?'HKT_GP':'EX_CLUTCH';
+    var fn=m==='pad'?padItems:m==='shoe'?shoeItems:m==='reg'?function(){return regItems('NE_REG')}:m==='sol'?function(){return regItems('NE_SOL',1)}:m==='rec'?function(){return regItems('NE_REC',2)}:m==='uj'?ujItems:m==='sd'?sdItems:m==='wp'?wpItems:m==='brg'?brgItems:m==='hy'?hyItems:m==='kyb'?kybItems:m==='sk'?skItems:m==='cv'?cvItems:m==='gp'?gpItems:m==='os'?osItems:function(){return clutchItems(m)},glob=m==='pad'?'MK_PADS':m==='shoe'?'MK_SHOES':m==='reg'?'NE_REG':m==='sol'?'NE_SOL':m==='rec'?'NE_REC':m==='uj'?'GMB_UJ':m==='sd'?'NKK_SD':m==='wp'?'GMB_WP':m==='brg'?'NSK_BRG':m==='hy'?'HSK_CYL':m==='kyb'?'KYB_SA':m==='sk'?'SKN_LIST':m==='cv'?'GSP_CV':m==='gp'?'HKT_GP':m==='os'?'TNC_SEAL':'EX_CLUTCH';
     if(window[glob]){DATA[m]=fn();return cb()}
     $('grid').innerHTML='<div class="load">Loading catalog…</div>';
-    var file=(m==='pad'?'pads':m==='shoe'?'shoes':m==='reg'?'reg':m==='sol'?'sol':m==='rec'?'rec':m==='uj'?'uj':m==='sd'?'sd':m==='wp'?'wp':m==='brg'?'bear':m==='hy'?'hyd':m==='kyb'?'kyb':m==='sk'?'seiken':m==='cv'?'cv':m==='gp'?'glow':'clutch')+'-data.js';
+    var file=(m==='pad'?'pads':m==='shoe'?'shoes':m==='reg'?'reg':m==='sol'?'sol':m==='rec'?'rec':m==='uj'?'uj':m==='sd'?'sd':m==='wp'?'wp':m==='brg'?'bear':m==='hy'?'hyd':m==='kyb'?'kyb':m==='sk'?'seiken':m==='cv'?'cv':m==='gp'?'glow':m==='os'?'seal':'clutch')+'-data.js';
     (function attempt(n){
       var s=document.createElement('script');s.src=file+'?v='+BUILD+(n?'.'+Date.now():'');
       s.onload=function(){if(!window[glob]){s.onerror();return}try{DATA[m]=fn();cb()}catch(e){showErr(e)}};
@@ -629,13 +650,13 @@ body.unlocked #lock-screen{display:none}
   }
   function buildChips(){
     var P=items();
-    var cnt={};P.forEach(function(p){if(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'||p.kind==='hy'||p.kind==='sk'||p.kind==='cv'){cnt[p.g]=(cnt[p.g]||0)+1}else if(p.kind==='reg')p.mk.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else if(p.kind==='kyb'||p.kind==='gp')p.mks.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else{var k=mkKey(p);cnt[k]=(cnt[k]||0)+1}});
-    var keys=isGP()?Object.keys(cnt).filter(function(k){return cnt[k]>=3}).sort(function(a,b){return cnt[b]-cnt[a]}):isCV()?Object.keys(cnt).filter(function(k){return k}).sort(function(a,b){return cnt[b]-cnt[a]}):isSK()?Object.keys(cnt).filter(function(k){return cnt[k]>=10}).sort(function(a,b){return cnt[b]-cnt[a]}):isKY()?Object.keys(cnt).filter(function(k){return cnt[k]>=10}).sort(function(a,b){return cnt[b]-cnt[a]}):isHY()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isBR()?Object.keys(cnt).sort(function(a,b){return a.indexOf('Hub')===0?-1:b.indexOf('Hub')===0?1:cnt[b]-cnt[a]}):isWP()?Object.keys(cnt).filter(function(k){return k&&cnt[k]>=5}).sort(function(a,b){return cnt[b]-cnt[a]}):isSD()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isUJ()?Object.keys(cnt).filter(function(k){return cnt[k]>=3&&k!=='DISCONTINUED'}).sort(function(a,b){return cnt[b]-cnt[a]}):isReg()?Object.keys(cnt).filter(function(k){return cnt[k]>=4}).sort(function(a,b){return cnt[b]-cnt[a]}):isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
+    var cnt={};P.forEach(function(p){if(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'||p.kind==='hy'||p.kind==='sk'||p.kind==='cv'){cnt[p.g]=(cnt[p.g]||0)+1}else if(p.kind==='reg')p.mk.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else if(p.kind==='kyb'||p.kind==='gp'||p.kind==='os')p.mks.forEach(function(k){cnt[k]=(cnt[k]||0)+1});else{var k=mkKey(p);cnt[k]=(cnt[k]||0)+1}});
+    var keys=isOS()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isGP()?Object.keys(cnt).filter(function(k){return cnt[k]>=3}).sort(function(a,b){return cnt[b]-cnt[a]}):isCV()?Object.keys(cnt).filter(function(k){return k}).sort(function(a,b){return cnt[b]-cnt[a]}):isSK()?Object.keys(cnt).filter(function(k){return cnt[k]>=10}).sort(function(a,b){return cnt[b]-cnt[a]}):isKY()?Object.keys(cnt).filter(function(k){return cnt[k]>=10}).sort(function(a,b){return cnt[b]-cnt[a]}):isHY()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isBR()?Object.keys(cnt).sort(function(a,b){return a.indexOf('Hub')===0?-1:b.indexOf('Hub')===0?1:cnt[b]-cnt[a]}):isWP()?Object.keys(cnt).filter(function(k){return k&&cnt[k]>=5}).sort(function(a,b){return cnt[b]-cnt[a]}):isSD()?Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}):isUJ()?Object.keys(cnt).filter(function(k){return cnt[k]>=3&&k!=='DISCONTINUED'}).sort(function(a,b){return cnt[b]-cnt[a]}):isReg()?Object.keys(cnt).filter(function(k){return cnt[k]>=4}).sort(function(a,b){return cnt[b]-cnt[a]}):isCl()?Object.keys(cnt).filter(function(k){return cnt[k]>=8}).sort(function(a,b){return cnt[b]-cnt[a]}):MAKERS.slice(1).map(function(m){return m[0]}).filter(function(k){return cnt[k]});
     if(st.maker&&!cnt[st.maker])st.maker='';
     $('makers').innerHTML=[['',P.length]].concat(keys.map(function(k){return [k,cnt[k]]})).map(function(m){
-      var name=m[0]===''?'All':isBR()?m[0]:isGP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isHY()||isKY()||isSK()||isCV()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isSD()||isWP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isUJ()?m[0].replace('UNIVERSAL JOINT','').replace(' VEHICLE & TRUCK','').trim().toLowerCase().replace(/(^|\s|\()\w/g,function(c){return c.toUpperCase()}):isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
+      var name=m[0]===''?'All':isOS()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isBR()?m[0]:isGP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isHY()||isKY()||isSK()||isCV()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isSD()||isWP()?m[0].charAt(0)+m[0].slice(1).toLowerCase():isUJ()?m[0].replace('UNIVERSAL JOINT','').replace(' VEHICLE & TRUCK','').trim().toLowerCase().replace(/(^|\s|\()\w/g,function(c){return c.toUpperCase()}):isReg()?m[0].charAt(0)+m[0].slice(1).toLowerCase():(isCl()?(EXMK[m[0]]||m[0]):MK[m[0]]);
       return '<button class="chip" type="button" data-m="'+m[0]+'" aria-pressed="'+(m[0]===st.maker)+'">'+name+'<small>'+m[1]+'</small></button>'}).join('');
-    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken & Seiki parts',cv:' CV joints & drive shafts',gp:' glow plugs'})[MODE]+(isGP()?' · HKT 2022-23 · '+P.reduce(function(a,p){return a+p.refs.length-1},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isCV()?' · GSP lists 2023/2025 · '+P.filter(function(p){return p.s.length}).length+' in your POS':isSK()?' · '+P.filter(function(p){return p.br==='Seiki'}).length+' Seiki boots · '+P.filter(function(p){return p.s.length}).length+' in your POS':isKY()?' · KYB 2025 · '+P.reduce(function(a,p){return a+p.refs.length},0)+' OEM numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isHY()?' · NB catalog Jan 2024 · '+P.filter(function(p){return p.s.length}).length+' in your POS':isBR()?' · NSK catalog · '+P.filter(function(p){return p.hub}).length+' wheel hub units · '+P.filter(function(p){return p.s.length}).length+' in your POS':isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
+    $('count').textContent=P.length+({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' voltage regulators',sol:' starter solenoids',rec:' rectifiers',uj:' universal joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken & Seiki parts',cv:' CV joints & drive shafts',gp:' glow plugs',os:' oil seals'})[MODE]+(isOS()?' · Tonyco engine seals · '+P.filter(function(p){return p.s.length}).length+' in your POS':isGP()?' · HKT 2022-23 · '+P.reduce(function(a,p){return a+p.refs.length-1},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isCV()?' · GSP lists 2023/2025 · '+P.filter(function(p){return p.s.length}).length+' in your POS':isSK()?' · '+P.filter(function(p){return p.br==='Seiki'}).length+' Seiki boots · '+P.filter(function(p){return p.s.length}).length+' in your POS':isKY()?' · KYB 2025 · '+P.reduce(function(a,p){return a+p.refs.length},0)+' OEM numbers · '+P.filter(function(p){return p.s.length}).length+' in your POS':isHY()?' · NB catalog Jan 2024 · '+P.filter(function(p){return p.s.length}).length+' in your POS':isBR()?' · NSK catalog · '+P.filter(function(p){return p.hub}).length+' wheel hub units · '+P.filter(function(p){return p.s.length}).length+' in your POS':isWP()?' · '+P.reduce(function(a,p){return a+p.refs.length+p.comp.length},0)+' cross numbers · '+P.filter(function(p){return p.s.length}).length+' in your list':isSD()?' · NKK catalog':isReg()||isUJ()?' · '+P.reduce(function(a,p){return a+p.refs.length},0)+' cross numbers':' · '+P.filter(function(p){return p.s.length}).length+' in your list');
     if(isSK()){
       var D=window.SKN_LIST,sc={},bc={};P.forEach(function(p){sc[p.t]=(sc[p.t]||0)+1;p.mm.forEach(function(m){var b=BORES.find(function(x){return Math.abs(x[1]-m)<0.3});if(b)bc[b[0]]=(bc[b[0]]||0)+1})});
       $('drums').innerHTML='<span class="lbl" style="align-self:center">Part</span>'+D.S.map(function(n,i){return [n,i]}).filter(function(x){return sc[x[1]]}).map(function(x){
@@ -710,6 +731,7 @@ body.unlocked #lock-screen{display:none}
   $('mSk').onclick=function(){if(MODE!=='sk')setMode('sk')};
   $('mCv').onclick=function(){if(MODE!=='cv')setMode('cv')};
   $('mGp').onclick=function(){if(MODE!=='gp')setMode('gp')};
+  $('mOs').onclick=function(){if(MODE!=='os')setMode('os')};
 
   // ---- matching ----
   // Returns the best-fitting variant: {t: total mm off, parts:[diffs], v: the matched values}
@@ -728,6 +750,10 @@ body.unlocked #lock-screen{display:none}
     if(p.kind==='pad'){
       p.d.forEach(function(d){var dx=x?Math.abs(d[0]-x):0,dy=y?Math.abs(d[1]-y):0,dz=z?Math.abs(d[2]-z):0;
         var s={t:dx+dy+dz*0.5,df:[x?dx:null,y?dy:null,z?dz:null],v:d,ok:function(t){return dx<=t&&dy<=t&&dz<=t+1}};if(!best||s.t<best.t)best=s});
+    }else if(p.kind==='os'){
+      if(!p.sz.length)return null;var bo=null;
+      p.sz.forEach(function(q,i){var dd=x?Math.abs(q[0]-x):0,dD=y?Math.abs(q[1]-y):0,db=z?Math.abs(q[2]-z):0;var t=dd+dD+db;if(!bo||t<bo.t)bo={t:t,dd:dd,dD:dD,db:db,i:i}});
+      return {t:bo.t,df:[x?bo.dd:null,y?bo.dD:null,z?bo.db:null],v:bo.i,ok:function(t){var k=Math.max(0.3,t/4);return bo.dd<=k&&bo.dD<=k&&bo.db<=Math.max(0.6,t/2)}};
     }else if(p.kind==='gp'){
       if(!p.L&&!p.td)return null;
       var dl=x?(p.L?Math.abs(p.L-x):99):0,dt=y?(p.td?Math.abs(p.td-y):99):0,dv=z?(p.pvn?Math.abs(p.pvn-z):99):0;
@@ -777,14 +803,14 @@ body.unlocked #lock-screen{display:none}
     if(MODE==='shoe'&&/^K\d/.test(q))q='Z'+q.slice(1);
     var out=[];
     items().forEach(function(p){
-      if(st.maker&&(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'||p.kind==='hy'||p.kind==='sk'||p.kind==='cv'?p.g!==st.maker:p.kind==='kyb'||p.kind==='gp'?p.mks.indexOf(st.maker)<0:p.kind==='reg'?p.mk.indexOf(st.maker)<0:mkKey(p)!==st.maker))return;
+      if(st.maker&&(p.kind==='uj'||p.kind==='sd'||p.kind==='wp'||p.kind==='brg'||p.kind==='hy'||p.kind==='sk'||p.kind==='cv'?p.g!==st.maker:p.kind==='kyb'||p.kind==='gp'||p.kind==='os'?p.mks.indexOf(st.maker)<0:p.kind==='reg'?p.mk.indexOf(st.maker)<0:mkKey(p)!==st.maker))return;
       if(st.fig&&(p.kind==='uj'||p.kind==='hy'||p.kind==='kyb'||p.kind==='sk'||p.kind==='cv')&&p.t!==st.fig)return;
       if(st.brand&&p.kind==='reg'&&p.brs.indexOf(st.brand)<0)return;
       if($('onlyStock').checked&&!p.s.length)return;
       if($('hideDisc').checked&&p.disc)return;
       if(!posOk(p,pos))return;
       if(q&&p.kind==='brg'){var q2=q.replace(BRSUF,'')||q;if(!p.tk.some(function(t){return t.indexOf(q)===0||t.indexOf(q2)===0}))return}
-      else if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ')+(p.veh?' '+norm(p.veh.join(' ')+' '+(p.nt||'')):'')+(p.kind==='uj'?' '+norm(p.v.join(' '))+' '+p.same.map(norm).join(' '):'')+(p.kind==='sd'?' '+norm(p.v.join(' ')+' '+p.desc):'')+(p.kind==='wp'||p.kind==='hy'?' '+norm(p.v.join(' ')):'')+(p.kind==='kyb'?' '+norm(p.v.join(' '))+' '+p.alt.join(' '):'')+(p.kind==='sk'||p.kind==='cv'||p.kind==='gp'?' '+norm(p.v.join(' ')):'');if(hay.indexOf(q)<0)return}
+      else if(q){var hay=norm(p.n)+' '+(p.r||[]).join(' ')+' '+(p.pcs||[]).map(function(c){return c.ln+' '+c.core}).join(' ')+' '+(p.rn||[]).join(' ')+' '+(p.of||[]).map(function(o){return o[0]}).join(' ')+(p.veh?' '+norm(p.veh.join(' ')+' '+(p.nt||'')):'')+(p.kind==='uj'?' '+norm(p.v.join(' '))+' '+p.same.map(norm).join(' '):'')+(p.kind==='sd'?' '+norm(p.v.join(' ')+' '+p.desc):'')+(p.kind==='wp'||p.kind==='hy'?' '+norm(p.v.join(' ')):'')+(p.kind==='kyb'?' '+norm(p.v.join(' '))+' '+p.alt.join(' '):'')+(p.kind==='sk'||p.kind==='cv'||p.kind==='gp'||p.kind==='os'?' '+norm(p.v.join(' ')):'');if(hay.indexOf(q)<0)return}
       var s=null;
       if(x||y||z){s=score(p,x,y,z);if(!s||!s.ok(tol))return}
       out.push({p:p,s:s});
@@ -805,6 +831,8 @@ body.unlocked #lock-screen{display:none}
       var d=r.s?r.s.v:p.d[0];
       return '<div class="dims">'+sp('X',d[0],df[0])+' · '+sp('Y',d[1],df[1])+' · '+sp('Z',d[2],df[2])+(r.s?' <span class="d">(off '+r.s.t.toFixed(1)+')</span>':'')+'</div>';
     }
+    if(p.kind==='os'){var di=r.s?r.s.v:0;
+      return '<div class="dims">'+p.sizes.map(function(z,i){return '<span class="'+(r.s&&i===di?'good':'')+'">'+esc(z.replace(/-/g,' × '))+'</span>'}).join(' · ')+'</div><div class="veh">'+esc(p.v[0]||'')+(p.v.length>1?' · +'+(p.v.length-1)+' more':'')+'</div>'+(p.refs.length>1?'<div class="refs">'+esc(p.refs.filter(function(x){return x!==p.n}).slice(0,3).join(', '))+'</div>':'')}
     if(p.kind==='gp'){var dg=r.s?r.s.df:[null,null,null],f5=function(t,d){return '<span class="'+cls(d)+'">'+t+'</span>'};
       return '<div class="dims">'+(p.L?f5('L '+p.L,dg[0]):'L –')+(p.a?' <span class="d">('+p.a+' + '+p.b+')</span>':'')+' · '+f5(p.thr?'M'+p.thr:'thread –',dg[1])+' · '+f5(p.pv||'? V',dg[2])+'</div><div class="veh">'+esc(p.v[0]||'')+(p.v.length>1?' · +'+(p.v.length-1)+' more':'')+'</div>'}
     if(p.kind==='cv'){var f4=function(lab,val,diff){return '<span class="'+cls(diff)+'">'+lab+' '+(val||'–')+'</span>'};var dc=r.s?r.s.df:[null,null,null];
@@ -844,6 +872,8 @@ body.unlocked #lock-screen{display:none}
     if(p.kind==='pad'){
       if(p.pos==='R')t+='<span class="tag rear">Rear</span>';if(p.pos==='FR')t+='<span class="tag rear">Front &amp; rear</span>';
       if(p.f.indexOf('shim')>=0)t+='<span class="tag">With shim</span>';
+    }else if(isOS()){
+      if(p.cam)t+='<span class="tag rear">Camshaft</span>';if(p.plate)t+='<span class="tag">Plate shape</span>';if(p.sleeve)t+='<span class="tag">With sleeve</span>';
     }else if(isGP()){
       if(p.term)t+='<span class="tag">Terminal '+esc(p.term)+'</span>';if(p.hex)t+='<span class="tag">Hex '+esc(p.hex)+'</span>';
     }else if(isCV()){
@@ -892,7 +922,7 @@ body.unlocked #lock-screen{display:none}
   function card(r,extra){
     var p=r.p;
     return '<button class="card'+(p.s.length?' instock':'')+'" type="button" data-n="'+p.n+'">'
-      +(isCl()?specHtml(p):isGP()?'<div class="pic photo" style="aspect-ratio:auto;height:170px">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'" style="height:100%;width:auto;margin:auto;display:block">':'<div class="none">No drawing</div>')+'</div>':isUJ()?ujSpec(p):isBR()?brSpec(p):isCV()&&p.t!=='out'?'<div class="pic spec"><div class="big" style="font-size:1.5rem">'+(p.t==='ds'?'Drive shaft':'Inner joint')+'</div><div class="sub">'+esc(p.raw||p.side||'GSP')+'</div></div>':isCV()?'<div class="pic spec"><div class="big" style="font-size:1.5rem;white-space:nowrap">'+(p.IN||'–')+'<small>IN</small> · '+(p.seal||'–')+'<small>Ø</small> · '+(p.EX||'–')+'<small>EX</small></div><div class="sub">teeth · seal mm · teeth</div></div>':isSK()&&p.i?'<div class="pic photo"><img loading="lazy" alt="Drawing of '+esc(p.n)+'" src="'+p.i+'"></div>':isSK()?'<div class="pic spec"><div class="big" style="font-size:1.6rem">'+esc(p.size?(p.size.replace('MM',' mm').replace(/(\d)X(\d)/,'$1 × $2')+(/MM|X/.test(p.size)?'':'″')):'Seiken')+'</div><div class="sub">'+esc(tcase(p.sn))+'</div></div>':isKY()?'<div class="pic spec"><div class="big" style="font-size:1.45rem">'+esc(KYT[p.t])+'</div><div class="sub">KYB · '+(p.t.charAt(0)==='K'?"K'lassic":/^[357]/.test(p.n)?'gas':'oil')+(p.pos.F&&p.pos.R?' · front & rear':p.pos.F?' · front':p.pos.R?' · rear':'')+'</div></div>':'<div class="pic'+(isReg()||isSD()||isWP()||isHY()?' photo':'')+'">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
+      +(isCl()?specHtml(p):isOS()?'<div class="pic spec"><div class="big" style="font-size:1.55rem;white-space:nowrap">'+(p.sizes[0]?esc(p.sizes[0].replace(/-/g,' × ')):'–')+'</div><div class="sub">shaft × outside × width, mm</div></div>':isGP()?'<div class="pic photo" style="aspect-ratio:auto;height:170px">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'" style="height:100%;width:auto;margin:auto;display:block">':'<div class="none">No drawing</div>')+'</div>':isUJ()?ujSpec(p):isBR()?brSpec(p):isCV()&&p.t!=='out'?'<div class="pic spec"><div class="big" style="font-size:1.5rem">'+(p.t==='ds'?'Drive shaft':'Inner joint')+'</div><div class="sub">'+esc(p.raw||p.side||'GSP')+'</div></div>':isCV()?'<div class="pic spec"><div class="big" style="font-size:1.5rem;white-space:nowrap">'+(p.IN||'–')+'<small>IN</small> · '+(p.seal||'–')+'<small>Ø</small> · '+(p.EX||'–')+'<small>EX</small></div><div class="sub">teeth · seal mm · teeth</div></div>':isSK()&&p.i?'<div class="pic photo"><img loading="lazy" alt="Drawing of '+esc(p.n)+'" src="'+p.i+'"></div>':isSK()?'<div class="pic spec"><div class="big" style="font-size:1.6rem">'+esc(p.size?(p.size.replace('MM',' mm').replace(/(\d)X(\d)/,'$1 × $2')+(/MM|X/.test(p.size)?'':'″')):'Seiken')+'</div><div class="sub">'+esc(tcase(p.sn))+'</div></div>':isKY()?'<div class="pic spec"><div class="big" style="font-size:1.45rem">'+esc(KYT[p.t])+'</div><div class="sub">KYB · '+(p.t.charAt(0)==='K'?"K'lassic":/^[357]/.test(p.n)?'gas':'oil')+(p.pos.F&&p.pos.R?' · front & rear':p.pos.F?' · front':p.pos.R?' · rear':'')+'</div></div>':'<div class="pic'+(isReg()||isSD()||isWP()||isHY()?' photo':'')+'">'+(p.i?'<img loading="lazy" alt="Drawing of '+p.n+'" src="'+p.i+'">':'<div class="none">No drawing<br>(export-only item)</div>')+'</div>')
       +'<div class="body">'+(extra||'')+'<div class="hd"><span class="no">'+p.n+'</span><span class="mk">'+makerOf(p)+'</span></div>'
       +dimsHtml(r)+tags(p)+(isBR()?(p.hub?refLine(p):''):isCl()||isReg()||isUJ()||isWP()?refLine(p):isSD()&&p.v.length?'<div class="veh">'+esc(p.v.join(' · '))+'</div>':'')+(p.s.length?'<div class="sname">'+esc(p.s[0])+'</div>':'')+'</div></button>';
   }
@@ -921,7 +951,7 @@ body.unlocked #lock-screen{display:none}
   function go(keep){
     if(!keep)st.limit=60;
     var f=filtered();
-    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' regulators',sol:' solenoids',rec:' rectifiers',uj:' U-joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken parts',cv:' CV joints',gp:' glow plugs'})[MODE])):'Nothing matches';
+    $('resN').textContent=f.list.length?(f.list.length+(f.any?' match that size':({pad:' pads',shoe:' shoe sets',disc:' clutch discs',cover:' clutch covers',reg:' regulators',sol:' solenoids',rec:' rectifiers',uj:' U-joints',sd:' starter drives',wp:' water pumps',brg:' bearings',hy:' cylinders',kyb:' shocks & struts',sk:' Seiken parts',cv:' CV joints',gp:' glow plugs',os:' oil seals'})[MODE])):'Nothing matches';
     $('grid').innerHTML=f.list.length?f.list.slice(0,st.limit).map(function(r){return card(r)}).join('')
       :'<div class="empty" style="grid-column:1/-1">Nothing within that range. Try ±3 mm, clear the maker, or check how you measured (see How to measure).</div>';
     $('more').hidden=f.list.length<=st.limit;
@@ -944,6 +974,7 @@ body.unlocked #lock-screen{display:none}
     if(isSK())return openSK(p);
     if(isCV())return openCV(p);
     if(isGP())return openGP(p);
+    if(isOS())return openOS(p);
     var size=p.kind==='pad'?(p.d.length?p.d.map(function(d){return 'X '+d[0]+' · Y '+d[1]+' · Z '+d[2]}).join('<br>'):'Not printed')
       :(p.pcs.length?p.pcs.map(function(c){return '<b>'+esc(c.ln)+'</b> '+esc(c.pos)+(c.disc?' (discontinued)':'')+'<br>'+(c.R?'Drum Ø '+(c.R*2)+' (R '+c.R+') · c '+c.c+' · a '+c.a+' · b '+c.b:'no size')+(c.core?' · core '+esc(c.core):'')}).join('<br>'):'Export only');
     var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+p.n+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
@@ -954,6 +985,17 @@ body.unlocked #lock-screen{display:none}
       +(p.r&&p.r.length?'<dt>See also</dt><dd>'+p.r.map(function(r){return '<a href="#" data-goto="'+r+'">'+r+'</a>'}).join(', ')+'</dd>':'')
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'+tags(p)
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=MK+Kashiyama+'+encodeURIComponent(p.n)+'">Search '+p.n+' on Google</a></div>';
+    $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
+  }
+  function openOS(p){
+    var q=norm($('q').value);
+    var h='<div class="hd"><h2 class="no" style="font-size:1.8rem">'+esc(p.n)+'</h2><button class="x" type="button" id="dlgX">Close</button></div>'
+      +'<dl class="kv"><dt>Size</dt><dd class="dims">'+(p.sizes.length?p.sizes.map(function(z){return esc(z.replace(/-/g,' × '))+' mm'}).join('<br>'):'not given')+'</dd>'
+      +(p.nok.length?'<dt>NOK no.</dt><dd>'+p.nok.map(esc).join(', ')+'</dd>':'')+(p.oem.length?'<dt>Genuine no.</dt><dd>'+p.oem.map(esc).join(', ')+'</dd>':'')
+      +'<dt>Type</dt><dd>'+(p.cam?'camshaft / ':'')+'engine oil seal'+(p.plate?' · plate shape':'')+(p.sleeve?' · with wear sleeve':'')+'</dd>'
+      +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'
+      +'<div><div class="lbl">Engines ('+p.apps.length+')</div><ul style="margin:4px 0 0;padding-left:18px;font-size:.88rem;max-height:34dvh;overflow:auto">'+p.apps.map(function(a){return '<li><b>'+esc(a[0])+'</b> '+esc(a[1])+' · '+esc(a[2])+(a[3]?' · <span class="d">'+esc(a[3])+'</span>':'')+'</li>'}).join('')+'</ul></div>'
+      +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent((p.nok[0]?'NOK '+p.nok[0]:p.n)+' oil seal')+'">Search on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
   function openGP(p){
@@ -1181,6 +1223,9 @@ body.unlocked #lock-screen{display:none}
       +'{"isPart":true,"numbers":["every number printed or stamped on it or on a sticker, exactly as written, e.g. 126000-1234, 27700-0L020, L190-4315, IVR-108, F00M145236"],"brand":"maker text visible e.g. DENSO, HITACHI, MITSUBISHI, BOSCH or \"\"","maker":"ND|HI|MI|BO|NK|SF|unknown (who made it, from text or typical shape)","volt":"12|24|unknown",'
       +'"terminals":0,"features":["short facts: plug shape, number of pins, pin letters (IG, L, S, B, P, F, E, C), screw holes, heat-sink fins, brushes attached"]}\n'
       +'isPart=false if it is not a voltage regulator. Read digits carefully. Never invent numbers.',
+    os:'These photos show an OIL SEAL (shaft seal) or its packet, brought to an auto parts shop in Sri Lanka. Respond with ONLY JSON:\n'
+      +'{"isPart":true,"numbers":["every number printed or moulded on the seal or packet, exactly as written, e.g. AH2492E, 90311-80010, NOK"],"size":"size printed on the seal face, e.g. 42-60-7 or 42x60x7, or \\"\\"","features":["short facts: single or double lip, spring visible, flange/plate, rubber colour"]}\n'
+      +'Never invent numbers.',
     gp:'These photos show a diesel GLOW PLUG (or its box) brought to an auto parts shop in Sri Lanka. Respond with ONLY JSON:\n'
       +'{"isPart":true,"numbers":["every number stamped on the hex or printed on the box, exactly as written, e.g. PT-155, 19850-54010, Y-114T, CZ-40, 11V"],"volts":"stamped voltage e.g. 11V or \\"\\"","features":["short facts: terminal nut or pin, long or short tip, thread size if visible"]}\n'
       +'Never invent numbers.',
@@ -1223,6 +1268,10 @@ body.unlocked #lock-screen{display:none}
   function pickPool(read){
     var x=parseFloat($('x').value)||0,y=parseFloat($('y').value)||0,z=parseFloat($('z').value)||0,P=items();
     var direct=[];
+    if(isOS()){
+      (read.numbers||[]).forEach(function(n){var k=norm(n);if(k.length<6)return;P.forEach(function(p){if(direct.indexOf(p)<0&&p.rn.indexOf(k)>=0)direct.push(p)})});
+      return {pool:[],direct:direct.slice(0,12),sized:false};
+    }
     if(isGP()){
       (read.numbers||[]).forEach(function(n){var k=norm(n).replace(/^HKT/,'');if(k.length<4||/^\d+(\d)?V$/.test(k))return;P.forEach(function(p){if(direct.indexOf(p)<0&&p.rn.indexOf(k)>=0)direct.push(p)})});
       return {pool:[],direct:direct.slice(0,12),sized:false};
@@ -1307,7 +1356,7 @@ body.unlocked #lock-screen{display:none}
     try{
       msg('<span class="spin"></span> Step 1 of 2: reading the photo…');
       var read=await gemini(shots.map(img64).concat([{text:READ[MODE]}]));
-      if(read.isPart===false){msg('That photo does not look like a '+({pad:'disc brake pad',shoe:'brake shoe',disc:'clutch disc',cover:'clutch cover',reg:'voltage regulator',sol:'starter solenoid',rec:'rectifier',uj:'universal joint',sd:'starter drive',wp:'water pump',brg:'bearing',hy:'brake or clutch cylinder',kyb:'shock absorber or strut',sk:'brake or clutch part',cv:'CV joint',gp:'glow plug'})[MODE]+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
+      if(read.isPart===false){msg('That photo does not look like a '+({pad:'disc brake pad',shoe:'brake shoe',disc:'clutch disc',cover:'clutch cover',reg:'voltage regulator',sol:'starter solenoid',rec:'rectifier',uj:'universal joint',sd:'starter drive',wp:'water pump',brg:'bearing',hy:'brake or clutch cylinder',kyb:'shock absorber or strut',sk:'brake or clutch part',cv:'CV joint',gp:'glow plug',os:'oil seal'})[MODE]+'. Check the Pads / Shoes switch at the top, or retake the photo.',1);return}
       var pk=pickPool(read);
       if(isWP()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the GMB catalog. Compare the bolt holes and outlet with the photo before selling.');return}
       if(isWP()&&pk.total>pk.lim){showResult(read,pk,[],'');msg('No number found. '+pk.total+' pumps have photos'+(st.maker?' for this maker':'')+'. Tap the vehicle maker above (Toyota, Nissan…), then tap Find it again.',1);return}
@@ -1315,6 +1364,11 @@ body.unlocked #lock-screen{display:none}
       if(isReg()&&pk.direct.length){showResult(read,pk,[],'');msg('Done. Number matched in the New-Era catalog. Compare the photo '+(MODE==='reg'?'and plug':'and terminals')+' before selling.');return}
       if(isReg()&&!pk.direct.length&&pk.total>pk.lim){showResult(read,pk,[],'');
         msg('No number found. '+pk.total+' '+(MODE==='sol'?'solenoids':MODE==='rec'?'rectifiers':'regulators')+' still fit'+(pk.br?' ('+REGBR[pk.br]+')':'')+'. Tap the vehicle maker (Toyota, Nissan…) above, then tap Find it again.',1);return}
+      if(isOS()){showResult(read,pk,[],'');
+        if(pk.direct.length)msg('Done. Number matched in the seal list. Check the size before selling.');
+        else{var m=String(read.size||'').match(/(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)/);if(m){$('x').value=m[1];$('y').value=m[2];$('z').value=m[3];go()}
+          msg(m?'Size <b>'+m[1]+' × '+m[2]+' × '+m[3]+'</b> read from the seal and typed in. Check it with a vernier.':'No number or size readable. Measure the seal and type the sizes above.',!m)}
+        return}
       if(isGP()){showResult(read,pk,[],'');
         if(pk.direct.length)msg('Done. Number matched in the HKT catalog. Check the voltage and the length before selling.');
         else{var vv=parseFloat(read.volts);if(vv&&!$('z').value){$('z').value=vv;go()}
@@ -1427,7 +1481,7 @@ body.unlocked #lock-screen{display:none}
   }
   $('bScan').onclick=scan;
 
-  var sm=ls('mkf_mode');try{setMode(['pad','shoe','disc','cover','reg','sol','rec','uj','sd','wp','brg','hy','kyb','sk','cv','gp'].indexOf(sm)>=0?sm:'pad',true)}catch(e){showErr(e)}
+  var sm=ls('mkf_mode');try{setMode(['pad','shoe','disc','cover','reg','sol','rec','uj','sd','wp','brg','hy','kyb','sk','cv','gp','os'].indexOf(sm)>=0?sm:'pad',true)}catch(e){showErr(e)}
 })();
 </script>
 </body>
