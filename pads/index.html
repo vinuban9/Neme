@@ -144,13 +144,62 @@ dialog::backdrop{background:#000a}
 .mrow.rec{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,2fr)}
 @media (max-width:700px){.mrow.rec{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .mrow.sd{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+
+body:not(.unlocked) .wrap,body:not(.unlocked) #dlg{display:none}
+body.unlocked #lock-screen{display:none}
+#lock-screen{position:fixed;inset:0;z-index:999;background:radial-gradient(ellipse at 50% 30%,#1b1f24 0%,#0a0c0f 75%);display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;padding:16px}
+#lock-box{width:320px;max-width:88vw;text-align:center;padding:32px 28px;background:#14171b;border:1px solid #262b32;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+#lock-logo{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;letter-spacing:1px;color:#fff;text-transform:uppercase}
+#lock-logo span{color:#FF5A36}
+#lock-sub{font-size:11px;color:#8b93a0;margin-top:2px;margin-bottom:14px}
+#lock-gauge{display:flex;justify-content:center;margin-bottom:6px}
+#lock-gauge-arc{transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)}
+#lock-title{font-size:12px;color:#8b93a0;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+#lock-quickusers{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.lock-quser{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;border:1px solid #262b32;background:#1b1f24;cursor:pointer;text-align:left}
+.lock-quser:active{background:#262b32}
+.lock-quser .lqa{width:26px;height:26px;border-radius:50%;background:#FF5A36;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lock-quser .lqn{font-size:13px;color:#eceff3;font-weight:600}
+.lock-quser .lqr{font-size:10px;color:#8b93a0;margin-left:auto;text-transform:uppercase;letter-spacing:.4px}
+#lock-form{display:flex;flex-direction:column;gap:10px}
+#lock-form input{padding:12px 13px;border-radius:9px;border:1px solid #262b32;background:#1b1f24;color:#eceff3;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;width:100%;box-sizing:border-box}
+#lock-form input:focus{border-color:#FF5A36}
+#lock-err{min-height:16px;font-size:11.5px;color:#FF5A5A;text-align:center}
+.lock-btn{padding:13px 0;border-radius:9px;border:none;background:#FF5A36;color:#fff;font-size:14px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;margin-top:2px}
+.lock-btn:active{background:#e04a28}
+#lock-help{margin-top:14px;font-size:11px;color:#5c636e;line-height:1.5}
+#lock-help a{color:#8b93a0}
+.userbar{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--mut);margin-top:6px}
+.userbar button{border:1px solid var(--brd);background:var(--sur2);color:var(--ink);border-radius:7px;padding:4px 10px;font:inherit;cursor:pointer}
 </style>
 </head>
 <body>
+<div id="lock-screen">
+  <div id="lock-box">
+    <div id="lock-logo">NEME <span>AUTO</span></div>
+    <div id="lock-sub">Nuwara Eliya Motor Enterprise · Parts Finder</div>
+    <div id="lock-gauge">
+      <svg width="88" height="50" viewBox="0 0 60 32" style="overflow:visible">
+        <path d="M 4 30 A 26 26 0 0 1 56 30" fill="none" stroke="#33393F" stroke-width="4" stroke-linecap="round"/>
+        <path id="lock-gauge-arc" d="M 4 30 A 26 26 0 0 1 56 30" fill="none" stroke="#FF5A36" stroke-width="4" stroke-linecap="round" stroke-dasharray="81.68" stroke-dashoffset="81.68"/>
+      </svg>
+    </div>
+    <div id="lock-title">Sign In</div>
+    <div id="lock-quickusers"></div>
+    <form id="lock-form" autocomplete="on">
+      <input id="lock-username" placeholder="Username" autocomplete="username" autocapitalize="off">
+      <input id="lock-password" type="password" placeholder="Password" autocomplete="current-password">
+      <div id="lock-err"></div>
+      <button type="submit" id="lock-submit-btn" class="lock-btn">Sign In</button>
+    </form>
+    <div id="lock-help">Same username and password as the NEME POS.<br>Forgot it? Reset it in the <a href="../">POS</a>.</div>
+  </div>
+</div>
 <div class="wrap">
   <header class="top">
     <div>
       <h1>NEME Parts <b>Finder</b></h1>
+      <div class="userbar"><span id="userBadge"></span><button type="button" id="bLogout">Sign out</button></div>
       <p>Scan, measure or type an OEM number to find the right part in the MK Kashiyama, EXEDY, New-Era, GMB, NKK, NSK, NB, KYB, Seiken, GSP and HKT catalogs. Green cards are in your NEME POS list.</p>
     </div>
     <div class="modes" role="group" aria-label="Part type">
@@ -224,7 +273,7 @@ dialog::backdrop{background:#000a}
 
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 
-<script src="pads-data.js?v=20261101b"></script>
+<script src="pads-data.js?v=20261102a"></script>
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
@@ -233,7 +282,30 @@ dialog::backdrop{background:#000a}
   function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var BUILD='20261101b';
+  var BUILD='20261102a';
+  // ---- Login: same accounts as the NEME POS (DB.staffUsers in localStorage 'neme_v1', SHA-256 password hashes) ----
+  var DEF_USERS=[{username:'vinuban',displayName:'Vinuban',passwordHash:'01e7ace56a2bd69bcd17a9d17061f37acd8194066309fe82aa7e9fda005be39e',role:'owner',active:true},
+    {username:'Dhushnath',displayName:'Dhushnath',passwordHash:'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',role:'staff',active:true}];
+  function staffUsers(){var u=[];try{u=(JSON.parse(localStorage.getItem('neme_v1')||'{}').staffUsers)||[]}catch(e){}return u.length?u:DEF_USERS}
+  async function sha256Hex(str){var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(str)));return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')}
+  function lockUsers(){var el=$('lock-quickusers'),users=staffUsers().filter(function(u){return u.active!==false});
+    el.innerHTML=users.map(function(u){var ini=(u.displayName||u.username||'?').trim().split(/\s+/).map(function(w){return w[0]}).slice(0,2).join('').toUpperCase();
+      return '<div class="lock-quser" data-u="'+esc(u.username)+'"><div class="lqa">'+esc(ini)+'</div><div class="lqn">'+esc(u.displayName||u.username)+'</div><div class="lqr">'+(u.role==='owner'?'Owner':'Staff')+'</div></div>'}).join('');
+    [].forEach.call(el.querySelectorAll('.lock-quser'),function(r){r.onclick=function(){$('lock-username').value=r.getAttribute('data-u');$('lock-password').focus()}})}
+  function lockShake(m){$('lock-err').textContent=m;var box=$('lock-box'),sh=[-8,8,-6,6,-3,3,0],i=0;box.style.transition='transform .06s';(function f(){if(i<sh.length){box.style.transform='translateX('+sh[i++]+'px)';setTimeout(f,45)}else box.style.transform=''})()}
+  function unlockAs(u){window._finderUser=u;try{sessionStorage.setItem('neme_finder_user',JSON.stringify({u:u.username,t:Date.now()}))}catch(e){}
+    $('userBadge').textContent='👤 '+(u.displayName||u.username)+(u.role==='owner'?' (Owner)':'');document.body.classList.add('unlocked')}
+  $('lock-form').addEventListener('submit',async function(e){e.preventDefault();$('lock-err').textContent='';
+    var un=$('lock-username').value.trim(),pw=$('lock-password').value;
+    if(!un||!pw){$('lock-err').textContent='Enter username and password';return}
+    var m=staffUsers().find(function(u){return String(u.username).toLowerCase()===un.toLowerCase()&&u.active!==false});
+    if(!m){lockShake('User not found');return}
+    if(await sha256Hex(pw)!==m.passwordHash){lockShake('Incorrect password');return}
+    $('lock-password').value='';unlockAs(m)});
+  $('bLogout').onclick=function(){if(!confirm('Sign out of '+((window._finderUser&&window._finderUser.displayName)||'the Parts Finder')+'?'))return;
+    try{sessionStorage.removeItem('neme_finder_user')}catch(e){}window._finderUser=null;document.body.classList.remove('unlocked');lockUsers();$('lock-username').value='';$('lock-err').textContent=''};
+  (function(){lockUsers();setTimeout(function(){var a=$('lock-gauge-arc');if(a)a.style.strokeDashoffset='0'},60);
+    try{var sv=JSON.parse(sessionStorage.getItem('neme_finder_user')||'null');if(sv){var m=staffUsers().find(function(u){return u.username===sv.u&&u.active!==false});if(m)unlockAs(m)}}catch(e){}})();
   function showErr(e){var g=$('grid');if(g)g.innerHTML='<div class="empty" style="grid-column:1/-1">Something went wrong: <b>'+esc((e&&e.message)||e)+'</b><br>Send this message to Claude.</div>'}
   window.addEventListener('error',function(ev){var g=$('grid');if(g&&/Loading/.test(g.textContent))showErr(ev.message)});
   var LEG_PAD='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',LEG_SHOE='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';
