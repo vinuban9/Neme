@@ -171,6 +171,9 @@ body.unlocked #lock-screen{display:none}
 #lock-help a{color:#8b93a0}
 .userbar{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--mut);margin-top:6px}
 .userbar button{border:1px solid var(--brd);background:var(--sur2);color:var(--ink);border-radius:7px;padding:4px 10px;font:inherit;cursor:pointer}
+
+.szl{display:inline-block;width:fit-content;align-self:flex-start;margin:6px 0 2px;padding:4px 10px;border-radius:999px;background:#fff1e8;color:#c2410c;font-weight:700;font-size:.8rem;border:1px solid #fdba74;cursor:pointer}.szl:hover{background:#ffedd5}
+.szbtn{display:inline-block;margin:6px 0 2px;padding:10px 16px;border-radius:12px;background:#ea580c;color:#fff!important;font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
@@ -284,7 +287,7 @@ body.unlocked #lock-screen{display:none}
   function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
   var MAKERS=[['','All'],['2','Toyota'],['1','Nissan'],['4','Isuzu'],['6','Mitsubishi'],['3','Mazda'],['5','Honda'],['9','Suzuki'],['0','Daihatsu'],['7','Subaru'],['8','Hino']];
   var MK={};MAKERS.forEach(function(m){MK[m[0]]=m[1]});
-  var BUILD='20261112a';
+  var BUILD='20261115a';
   // ---- Login: same accounts as the NEME POS (DB.staffUsers in localStorage 'neme_v1', SHA-256 password hashes) ----
   var DEF_USERS=[{username:'vinuban',displayName:'Vinuban',passwordHash:'01e7ace56a2bd69bcd17a9d17061f37acd8194066309fe82aa7e9fda005be39e',role:'owner',active:true},
     {username:'Dhushnath',displayName:'Dhushnath',passwordHash:'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',role:'staff',active:true}];
@@ -333,6 +336,8 @@ body.unlocked #lock-screen{display:none}
   function isFF(){return MODE==='ff'}
   var FFT={bj:'Ball joint',te:'Tie rod end',re:'Rack end',sl:'Stabilizer link',ca:'Control arm',sr:'Side rod assy',ia:'Idler arm',pa:'Pitman arm',cr:'Cross rod',ik:'Inner arm shaft kit'};
   var FFREG={JP:'Japanese',KR:'Korean',EU:'European',US:'American'};
+  function ffSzUrl(p){return 'https://www.google.com/search?q='+encodeURIComponent('site:autodoc.co.uk 555 '+p.n5[0])}
+  function ffSzOk(p){return p.has5&&!p.ctr&&/^S[A-Z]/.test(p.n5[0]||'')}
   function ffThr(p,long){return p.td?'M'+p.td+'×'+p.tp+(p.mf?' '+(p.mf==='M'?'male':'female'):'')+(p.hand?' '+(long?(p.hand==='R'?'right-hand':'left-hand'):p.hand+'H'):''):''}
   function ffItems(){var seen={};var out=(window.FFF_LIST||[]).map(function(r){
     var id=r[0][0]||(r[5][0]?r[5][0]:r[6][0]?'TRW '+r[6][0]:'MOOG '+r[7][0]);if(seen[id]){seen[id]++;id=id+' ('+seen[id]+')'}else seen[id]=1;
@@ -878,7 +883,7 @@ body.unlocked #lock-screen{display:none}
     }
     if(p.kind==='ff'){var q=norm($('q').value),ol=p.oem.length?p.oem:p.trw.length?p.trw:p.moog,hit=q?ol.filter(function(o){return norm(o).indexOf(q)>=0}):[],sh=hit.concat(ol.filter(function(o){return hit.indexOf(o)<0})).slice(0,3);
       return '<div class="dims">'+FFT[p.t]+(p.pos?' · '+esc(p.pos):'')+(p.td?' · <span class="'+(r.s?'good':'')+'">'+ffThr(p)+'</span>':'')+'</div>'+(p.v.length?'<div class="veh">'+esc(p.v[0])+'</div>':'')
-        +(ol.length?'<div class="refs">'+(p.oem.length?'OEM':p.trw.length?'TRW':'MOOG')+': '+sh.map(function(o){return hit.indexOf(o)>=0?'<b>'+esc(o)+'</b>':esc(o)}).join(', ')+(ol.length>3?' +'+(ol.length-3):'')+'</div>':'')}
+        +(ffSzOk(p)?'<span class="szl" role="link" data-sz="'+esc(p.n5[0])+'">📏 Both-side sizes</span>':'')+(ol.length?'<div class="refs">'+(p.oem.length?'OEM':p.trw.length?'TRW':'MOOG')+': '+sh.map(function(o){return hit.indexOf(o)>=0?'<b>'+esc(o)+'</b>':esc(o)}).join(', ')+(ol.length>3?' +'+(ol.length-3):'')+'</div>':'')}
     if(p.kind==='os'){var di=r.s?r.s.v:0;
       return '<div class="dims">'+p.sizes.map(function(z,i){return '<span class="'+(r.s&&i===di?'good':'')+'">'+esc(z.replace(/-/g,' × '))+'</span>'}).join(' · ')+'</div><div class="veh">'+esc(p.v[0]||'')+(p.v.length>1?' · +'+(p.v.length-1)+' more':'')+'</div>'+(p.refs.length>1?'<div class="refs">'+esc(p.refs.filter(function(x){return x!==p.n}).slice(0,3).join(', '))+'</div>':'')}
     if(p.kind==='gp'){var dg=r.s?r.s.df:[null,null,null],f5=function(t,d){return '<span class="'+cls(d)+'">'+t+'</span>'};
@@ -1053,6 +1058,7 @@ body.unlocked #lock-screen{display:none}
       +'<dt>Catalog page</dt><dd>'+p.p+'</dd>'
       +'<dt>Your stock list</dt><dd>'+(p.s.length?p.s.map(esc).join('<br>'):'Not in your POS list')+'</dd></dl>'
       +(rows.length?'<div><div class="lbl">Vehicles</div><ul style="margin:4px 0 0;padding-left:18px;font-size:.88rem;max-height:34dvh;overflow:auto">'+rows.map(function(r){return '<li>'+(r[0]?'<b>'+esc(r[0])+'</b> ':'')+esc(r[1])+(r[2]?' · '+esc(r[2]):'')+'</li>'}).join('')+'</ul><div class="d" style="font-size:.78rem;margin-top:4px">Model and year lines follow the catalog order; check the catalog page if a line looks shifted.</div></div>':'')
+      +(ffSzOk(p)?'<a class="szbtn" target="_blank" rel="noopener" href="'+ffSzUrl(p)+'">📏 Both-side sizes (cone Ø + both threads)</a><div class="d" style="font-size:.78rem;margin:4px 0 8px">Opens the Autodoc page for 555 '+esc(p.n5[0])+' via Google: look for <b>Cone Size</b>, <b>Cone Pitch</b> and <b>Thread Size</b>. Not every part number is listed there.</div>':'')
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent(p.has5&&!p.ctr?'555 '+p.n5[0]:(p.oem[0]||p.n)+' '+FFT[p.t])+'">Search on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
@@ -1211,8 +1217,8 @@ body.unlocked #lock-screen{display:none}
       +'<div class="tags"><a target="_blank" rel="noopener" href="https://www.google.com/search?q=EXEDY+'+encodeURIComponent(p.n)+'">Search '+p.n+' on Google</a></div>';
     $('dlgBody').innerHTML=h;$('dlg').showModal();$('dlgX').onclick=function(){$('dlg').close()};
   }
-  $('grid').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
-  $('scanOut').addEventListener('click',function(e){var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
+  $('grid').addEventListener('click',function(e){var z=e.target.closest('[data-sz]');if(z){var pp=items().filter(function(p){return p.kind==='ff'&&p.n5[0]===z.dataset.sz})[0];if(pp)window.open(ffSzUrl(pp),'_blank','noopener');return}var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
+  $('scanOut').addEventListener('click',function(e){var z=e.target.closest('[data-sz]');if(z){var pp=items().filter(function(p){return p.kind==='ff'&&p.n5[0]===z.dataset.sz})[0];if(pp)window.open(ffSzUrl(pp),'_blank','noopener');return}var c=e.target.closest('[data-n]');if(c)openCard(c.dataset.n)});
   $('dlgBody').addEventListener('click',function(e){var a=e.target.closest('[data-goto]');if(!a)return;e.preventDefault();
     $('dlg').close();$('x').value=$('y').value=$('z').value='';$('q').value=a.dataset.goto;$('exNote').textContent='';go();window.scrollTo(0,0)});
   $('dlg').addEventListener('click',function(e){if(e.target===this)this.close()});
