@@ -228,6 +228,7 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
     <button class="tnav" data-panel="reports">&#128202; Reports</button>
     <button class="tnav" data-panel="vinsearch">&#128663; VIN Search</button>
     <button class="tnav" data-panel="partid">&#129513; Part ID</button>
+    <button class="tnav" data-panel="finder">&#128218; Parts Finder</button>
     <button class="tnav" data-panel="quotes" id="tnav-quotes">&#128196; Quotes</button>
     <button class="tnav" data-panel="activity" id="tnav-activity" style="display:none">&#128220; Activity</button>
     <button class="tnav" data-panel="debtors" id="tnav-debtors">&#128181; Debtors</button>
@@ -587,6 +588,16 @@ td{padding:9px 12px;font-size:13px;vertical-align:middle}
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-finder">
+  <div class="ph" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div class="pt">&#128218; Parts Finder - supplier catalogs</div>
+    <div style="display:flex;gap:8px"><button class="btn bs" type="button" onclick="finderReload()">&#8635; Reload</button><a class="btn bs" href="pads/" target="_blank" rel="noopener" style="text-decoration:none">&#8599; Open in new tab</a></div>
+  </div>
+  <div class="pb" style="padding:0">
+    <iframe id="finder-frame" title="Parts Finder" style="display:block;width:100%;height:calc(100vh - 150px);min-height:520px;border:0;background:#fff"></iframe>
   </div>
 </div>
 
@@ -10544,6 +10555,47 @@ function invDupText(d){return 'Invoice <strong>'+upEsc(d.invoiceNo||d.number||''
   try{if(document.getElementById('home-quick')&&document.body.classList.contains('unlocked'))renderHome();}catch(e){}
 })();
 
+</script>
+<script>
+// ===== 🔎 PARTS FINDER (supplier catalogs) embedded in the POS =====
+(function(){
+  var SRC='pads/';
+  function cu(){return (window._currentUser&&window._currentUser.username)||'';}
+  function frameUser(f){try{return (f.contentWindow&&f.contentWindow._finderUser&&f.contentWindow._finderUser.username)||''}catch(e){return ''}}
+  function load(f,force){if(!f)return;if(force||!f.getAttribute('src')||frameUser(f)!==cu()){f.setAttribute('src',SRC+'?pos='+Date.now());}}
+  window.finderReload=function(){load(document.getElementById('finder-frame'),true);};
+  function wire(){
+    if(typeof switchPanel==='function'&&!switchPanel._finder){
+      var _sp=switchPanel;switchPanel=function(id){var r=_sp.apply(this,arguments);if(id==='finder'&&window._activePanel==='finder')load(document.getElementById('finder-frame'));return r;};switchPanel._finder=1;
+    }
+    if(typeof renderHome==='function'&&!renderHome._finder){
+      var _rh=renderHome;renderHome=function(){var r=_rh.apply(this,arguments);try{
+        var q=document.getElementById('home-quick');
+        if(q&&!q.querySelector('[data-panel="finder"]')){
+          var b=document.createElement('button');b.className='btn bs home-q';b.setAttribute('data-panel','finder');
+          b.style.cssText='flex-direction:column;padding:18px 8px;gap:6px;font-size:12px';b.innerHTML='<span style="font-size:24px">📚</span>Parts Finder';
+          b.onclick=function(e){if(e)e.stopPropagation();if(document.body.classList.contains('mobile-mode'))openFinderMobile();else switchPanel('finder');};
+          var pid=q.querySelector('[data-panel="partid"]');if(pid&&pid.nextSibling)q.insertBefore(b,pid.nextSibling);else q.appendChild(b);
+        }}catch(e){}return r;};renderHome._finder=1;
+      try{if(document.body.classList.contains('unlocked'))renderHome();}catch(e){}
+    }
+    if(document.body.classList.contains('mobile-mode')&&!document.getElementById('m-finder')){
+      var fb=document.createElement('button');fb.id='m-finder';fb.title='Parts Finder (supplier catalogs)';fb.textContent='📚';fb.onclick=openFinderMobile;
+      fb.style.cssText='position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 330px);z-index:60;width:50px;height:50px;border-radius:50%;border:none;background:#ea580c;color:#fff;font-size:21px;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+      (document.getElementById('mapp')||document.body).appendChild(fb);
+    }
+  }
+  window.openFinderMobile=function(){
+    var ov=document.getElementById('finder-ov');
+    if(!ov){ov=document.createElement('div');ov.id='finder-ov';
+      ov.style.cssText='position:fixed;inset:0;z-index:9000;background:#fff;display:flex;flex-direction:column';
+      ov.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;background:#111;color:#fff;font-weight:700"><span>📚 Parts Finder</span><button type="button" id="finder-ov-x" style="background:#ea580c;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700">✕ Close</button></div><iframe id="finder-ov-frame" title="Parts Finder" style="flex:1;width:100%;border:0"></iframe>';
+      (document.getElementById('mapp')||document.body).appendChild(ov);document.getElementById('finder-ov-x').onclick=function(){ov.style.display='none';};}
+    ov.style.display='flex';load(document.getElementById('finder-ov-frame'));
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(wire,800);});else setTimeout(wire,800);
+  setTimeout(wire,2500);
+})();
 </script>
 </body>
 </html>
